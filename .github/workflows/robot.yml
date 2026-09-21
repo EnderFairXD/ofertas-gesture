@@ -18,7 +18,7 @@ jobs:
         with:
           python-version: '3.10'
       - name: Instalar librerías
-        run: pip install requests beautifulsoup4
+        run: pip install cloudscraper beautifulsoup4
       - name: Ejecutar robot
         run: python scraper.py
       - name: Guardar nuevos precios
