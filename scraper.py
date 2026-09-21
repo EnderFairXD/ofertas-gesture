@@ -1,16 +1,12 @@
-import requests
+import cloudscraper
 from bs4 import BeautifulSoup
 import json
 import re
 from datetime import datetime
 
-# Simulamos ser un navegador normal para que no nos bloqueen
-headers = {
-    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/114.0.0.0 Safari/537.36",
-    "Accept-Language": "es-ES,es;q=0.9"
-}
+# Creamos el scraper avanzado para saltar protecciones
+scraper = cloudscraper.create_scraper(browser={'browser': 'chrome', 'platform': 'windows', 'desktop': True})
 
-# Aquí configuramos todas las tiendas que queremos vigilar
 tiendas = [
     {
         "nombre": "Steelcase Oficial (Nueva)",
@@ -43,16 +39,15 @@ resultados = []
 
 for tienda in tiendas:
     try:
-        respuesta = requests.get(tienda["url"], headers=headers, timeout=10)
+        # Usamos el scraper avanzado en lugar de requests normal
+        respuesta = scraper.get(tienda["url"], timeout=15)
         sopa = BeautifulSoup(respuesta.text, 'html.parser')
         precio_elem = sopa.select_one(tienda["selector"])
         
         if precio_elem:
-            # Limpiamos el texto (quitamos el símbolo €, puntos de miles, etc.)
-            texto = precio_elem.text.lower().replace('€', '').replace('eur', '')
+            texto = precio_elem.text.lower().replace('€', '').replace('eur', '').replace('£', '')
             texto = texto.replace('.', '').replace(',', '.').strip()
             
-            # Extraemos solo los números por si pone cosas como "Desde 500€"
             numeros = re.findall(r'\d+\.?\d*', texto)
             if numeros:
                 precio_final = float(numeros[0])
@@ -63,8 +58,7 @@ for tienda in tiendas:
                     "Última actualización": datetime.now().strftime("%d/%m/%Y %H:%M")
                 })
     except Exception as e:
-        print(f"No se pudo revisar {tienda['nombre']}")
+        print(f"Error en {tienda['nombre']}: {e}")
 
-# Guardamos los resultados
 with open('datos.json', 'w') as f:
     json.dump(resultados, f)
