@@ -1,1 +1,20 @@
-[]
+[
+  {
+    "Tienda": "Steelcase Oficial (Nueva)",
+    "Precio": 1149.0,
+    "Enlace": "https://es.steelcase.com/products/gesture",
+    "Última actualización": "21/09/2026 16:30"
+  },
+  {
+    "Tienda": "Oficinas Montiel (Reacondicionada)",
+    "Precio": 695.5,
+    "Enlace": "https://www.oficinasmontiel.com/sillas-ergonomicas/silla-steelcase-gesture-segunda-mano.html",
+    "Última actualización": "21/09/2026 16:30"
+  },
+  {
+    "Tienda": "The Office Crowd (Reacondicionada UK)",
+    "Precio": 580.0,
+    "Enlace": "https://theofficecrowd.com/search?q=steelcase+gesture",
+    "Última actualización": "21/09/2026 16:30"
+  }
+]
