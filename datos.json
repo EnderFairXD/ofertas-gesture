@@ -1,20 +1,32 @@
 [
   {
-    "Tienda": "Steelcase Oficial (Nueva)",
+    "Tienda": "Steelcase Oficial",
     "Precio": 1149.0,
-    "Enlace": "https://es.steelcase.com/products/gesture",
+    "Enlace": "https://es.steelcase.com/search?q=gesture",
     "Última actualización": "21/09/2026 16:30"
   },
   {
     "Tienda": "Oficinas Montiel (Reacondicionada)",
     "Precio": 695.5,
-    "Enlace": "https://www.oficinasmontiel.com/sillas-ergonomicas/silla-steelcase-gesture-segunda-mano.html",
+    "Enlace": "https://www.oficinasmontiel.com/catalogsearch/result/?q=steelcase+gesture",
     "Última actualización": "21/09/2026 16:30"
   },
   {
     "Tienda": "The Office Crowd (Reacondicionada UK)",
     "Precio": 580.0,
     "Enlace": "https://theofficecrowd.com/search?q=steelcase+gesture",
+    "Última actualización": "21/09/2026 16:30"
+  },
+  {
+    "Tienda": "Corporate Spec (Reacondicionada UK)",
+    "Precio": 520.0,
+    "Enlace": "https://corporatespec.com/?s=steelcase+gesture&post_type=product",
+    "Última actualización": "21/09/2026 16:30"
+  },
+  {
+    "Tienda": "eBay Europa (Segunda mano)",
+    "Precio": 450.0,
+    "Enlace": "https://www.ebay.es/sch/i.html?_nkw=steelcase+gesture+silla",
     "Última actualización": "21/09/2026 16:30"
   }
 ]
