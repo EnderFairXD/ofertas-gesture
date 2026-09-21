@@ -1,0 +1,30 @@
+name: Rastrear Precios
+
+on:
+  schedule:
+    - cron: '0 8 * * *' # Se ejecuta todos los días a las 8:00 AM
+  workflow_dispatch: # Permite que lo ejecutes a mano cuando quieras
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - name: Configurar Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.10'
+      - name: Instalar librerías
+        run: pip install requests beautifulsoup4
+      - name: Ejecutar robot
+        run: python scraper.py
+      - name: Guardar nuevos precios
+        run: |
+          git config --global user.name 'Robot'
+          git config --global user.email 'robot@acciones.com'
+          git add datos.json
+          git commit -m "Actualizar precios" || exit 0
+          git push
