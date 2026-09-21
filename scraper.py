@@ -11,34 +11,33 @@ headers = {
 }
 
 # Aquí configuramos todas las tiendas que queremos vigilar
-# Aquí configuramos todas las tiendas que queremos vigilar
-    tiendas = [
-        {
-            "nombre": "Steelcase Oficial (Nueva)",
-            "url": "https://es.steelcase.com/products/gesture",
-            "selector": ".price-item--regular"
-        },
-        {
-            "nombre": "Oficinas Montiel (Reacondicionada)",
-            "url": "https://www.oficinasmontiel.com/sillas-ergonomicas/silla-steelcase-gesture-segunda-mano.html",
-            "selector": ".price"
-        },
-        {
-            "nombre": "The Office Crowd (Reacondicionada UK)",
-            "url": "https://theofficecrowd.com/search?q=steelcase+gesture",
-            "selector": ".price-item" # Selector típico de tiendas Shopify
-        },
-        {
-            "nombre": "Corporate Spec (Reacondicionada UK)",
-            "url": "https://corporatespec.com/?s=steelcase+gesture&post_type=product",
-            "selector": ".woocommerce-Price-amount" # Selector típico de WooCommerce
-        },
-        {
-            "nombre": "eBay Europa (Segunda mano)",
-            "url": "https://www.ebay.es/sch/i.html?_nkw=steelcase+gesture+silla",
-            "selector": ".s-item__price"
-        }
-    ]
+tiendas = [
+    {
+        "nombre": "Steelcase Oficial (Nueva)",
+        "url": "https://es.steelcase.com/products/gesture",
+        "selector": ".price-item--regular"
+    },
+    {
+        "nombre": "Oficinas Montiel (Reacondicionada)",
+        "url": "https://www.oficinasmontiel.com/sillas-ergonomicas/silla-steelcase-gesture-segunda-mano.html",
+        "selector": ".price"
+    },
+    {
+        "nombre": "The Office Crowd (Reacondicionada UK)",
+        "url": "https://theofficecrowd.com/search?q=steelcase+gesture",
+        "selector": ".price-item"
+    },
+    {
+        "nombre": "Corporate Spec (Reacondicionada UK)",
+        "url": "https://corporatespec.com/?s=steelcase+gesture&post_type=product",
+        "selector": ".woocommerce-Price-amount"
+    },
+    {
+        "nombre": "eBay Europa (Segunda mano)",
+        "url": "https://www.ebay.es/sch/i.html?_nkw=steelcase+gesture+silla",
+        "selector": ".s-item__price"
+    }
+]
 
 resultados = []
 
