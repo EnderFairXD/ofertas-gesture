@@ -1,21 +1,21 @@
 {
-  "ejecutado": "2026-10-01T18:19:05+00:00",
+  "ejecutado": "2026-10-01T18:21:33+00:00",
   "ofertas_publicadas": 1,
   "conservado_sin_cambios": false,
   "fuentes": [
     {
       "nombre": "Steelcase Oficial (ES)",
-      "ok": true,
+      "ok": false,
       "omitida": false,
-      "ofertas": 1,
-      "detalle": null
+      "ofertas": 0,
+      "detalle": "JSONDecodeError: Expecting value: line 1 column 2 (char 1)"
     },
     {
       "nombre": "The Office Crowd (reacond. UK)",
-      "ok": true,
+      "ok": false,
       "omitida": false,
       "ofertas": 0,
-      "detalle": "la tienda respondió (10 resultados) pero ninguno es una Gesture"
+      "detalle": "JSONDecodeError: Expecting value: line 1 column 1 (char 0)"
     },
     {
       "nombre": "Oficinas Montiel (2ª mano)",
