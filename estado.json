@@ -1,5 +1,5 @@
 {
-  "ejecutado": "2026-10-01T19:24:42+00:00",
+  "ejecutado": "2026-10-01T19:26:24+00:00",
   "ofertas_publicadas": 7,
   "conservado_sin_cambios": false,
   "a_mano": [
@@ -40,7 +40,7 @@
       "ok": true,
       "omitida": false,
       "ofertas": 0,
-      "detalle": "la tienda respondió (10 resultados) pero ninguno es una Gesture"
+      "detalle": "sin resultados para este producto"
     },
     {
       "nombre": "Chair Smith (reacond. UK)",
