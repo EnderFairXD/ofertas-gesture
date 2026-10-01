@@ -67,6 +67,19 @@ TERMINOS_EXCLUIDOS = (
 # otro precio. Esta cookie fija el mercado español, que es el que te aplica.
 COOKIES_PAIS = {"localization": "ES"}
 
+# Dirección de entrega para pedir tarifas reales de envío. Cámbiala por la
+# tuya si vives lejos de Madrid: algunas tiendas cobran por zona.
+DESTINO = {
+    "shipping_address[country]": os.getenv("PAIS_DESTINO", "Spain"),
+    "shipping_address[province]": os.getenv("PROVINCIA_DESTINO", "Madrid"),
+    "shipping_address[zip]": os.getenv("CP_DESTINO", "28013"),
+}
+
+# IVA de importación que aplica España a lo que entra de fuera de la UE. Se
+# calcula sobre el valor en aduana, que incluye el transporte. No incluye
+# aranceles ni los gastos de despacho que cobra el transportista.
+IVA_IMPORTACION = 1.21
+
 CABECERAS_BASE = {
     "User-Agent": (
         "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
@@ -126,15 +139,30 @@ class Oferta:
     enlace: str
     disponible: bool = True
     entrega: str = ENTREGA_ES
+    envio: float | None = None  # en la misma moneda que el precio
 
     def a_dict(self, cambio: dict[str, float]) -> dict:
         tasa = cambio.get(self.moneda, 1.0 if self.moneda == "EUR" else None)
+        precio_eur = round(self.precio * tasa, 2) if tasa else None
+        envio_eur = (
+            round(self.envio * tasa, 2) if (tasa and self.envio is not None) else None
+        )
+        # Lo que de verdad te cuesta ponerla en casa.
+        total_eur = None
+        if precio_eur is not None and envio_eur is not None:
+            total_eur = precio_eur + envio_eur
+            if self.entrega == ENTREGA_IMPORTA:
+                total_eur *= IVA_IMPORTACION
+            total_eur = round(total_eur, 2)
         return {
             "Tienda": self.tienda,
             "Producto": self.producto,
             "Precio": round(self.precio, 2),
             "Moneda": self.moneda,
-            "PrecioEUR": round(self.precio * tasa, 2) if tasa else None,
+            "PrecioEUR": precio_eur,
+            "Envio": round(self.envio, 2) if self.envio is not None else None,
+            "EnvioEUR": envio_eur,
+            "TotalEUR": total_eur,
             "Enlace": self.enlace,
             "Disponible": self.disponible,
             "Entrega": self.entrega,
@@ -403,6 +431,50 @@ def shopify_divisa(cli: Cliente, dominio: str, por_defecto: str) -> str:
     return por_defecto
 
 
+def tarifa_envio_shopify(
+    cli: Cliente, dominio: str, variante: int
+) -> float | None:
+    """Tarifa real de envío a tu dirección. Shopify la calcula sobre el
+    carrito, así que hay que meter la silla en uno (un carrito es efímero y
+    vive en nuestra propia sesión: no encarga nada ni compra nada).
+
+    Solo funciona con variantes en stock; con el producto agotado devuelve
+    None en vez de inventarse una cifra."""
+    try:
+        r = cli.sesion.post(
+            f"{dominio}/cart/add.js",
+            json={"id": variante, "quantity": 1},
+            timeout=TIMEOUT,
+            cookies=COOKIES_PAIS,
+        )
+        if r.status_code >= 400:
+            return None
+        r = cli.sesion.get(
+            f"{dominio}/cart/shipping_rates.json",
+            params=DESTINO,
+            timeout=TIMEOUT + 15,
+            cookies=COOKIES_PAIS,
+        )
+        if r.status_code >= 400:
+            return None
+        tarifas = r.json().get("shipping_rates") or []
+    except Exception as exc:
+        log(f"    sin tarifa de envío ({exc.__class__.__name__})")
+        return None
+    finally:
+        try:  # dejar el carrito como estaba
+            cli.sesion.post(f"{dominio}/cart/clear.js", timeout=TIMEOUT, cookies=COOKIES_PAIS)
+        except Exception:
+            pass
+    precios = []
+    for t in tarifas:
+        try:
+            precios.append(float(t.get("price")))
+        except (TypeError, ValueError):
+            continue
+    return min(precios) if precios else None
+
+
 def shopify_producto(
     cli: Cliente, tienda: str, url_producto: str, moneda: str = "EUR"
 ) -> list[Oferta]:
@@ -415,15 +487,21 @@ def shopify_producto(
         return []
     disponibles = [v for v in variantes if v.get("available")]
     barata = min(disponibles or variantes, key=lambda v: v.get("price") or 10**9)
+    dominio = _origen(url_producto)
+    envio = (
+        tarifa_envio_shopify(cli, dominio, barata["id"])
+        if barata.get("available")
+        else None
+    )
     return [
         Oferta(
             tienda=tienda,
             producto=limpiar(datos.get("title", "Gesture")),
             precio=barata["price"] / 100.0,  # Shopify da céntimos
-            moneda=datos.get("price_currency")
-            or shopify_divisa(cli, _origen(url_producto), moneda),
+            moneda=datos.get("price_currency") or shopify_divisa(cli, dominio, moneda),
             enlace=url_producto,
             disponible=bool(barata.get("available")),
+            envio=envio,
         )
     ]
 
@@ -464,27 +542,21 @@ def shopify_busqueda(
     productos = (
         datos.get("resources", {}).get("results", {}).get("products", [])
     )
-    moneda = shopify_divisa(cli, dominio, moneda)
     ofertas = []
-    for p in productos:
+    for p in productos[:MAX_POR_TIENDA * 2]:
         titulo = p.get("title", "")
         if not interesa(titulo):
             continue
-        try:
-            precio = float(str(p.get("price", "")).replace(",", ""))
-        except ValueError:
-            continue
         enlace = p.get("url", "")
-        ofertas.append(
-            Oferta(
-                tienda=tienda,
-                producto=limpiar(titulo),
-                precio=precio,
-                moneda=moneda,
-                enlace=dominio + enlace.split("?")[0] if enlace.startswith("/") else enlace,
-                disponible=bool(p.get("available", True)),
-            )
-        )
+        enlace = dominio + enlace.split("?")[0] if enlace.startswith("/") else enlace
+        # Se pasa por la ficha: trae las variantes y permite pedir la tarifa
+        # real de envío, cosa que el buscador no da.
+        try:
+            ofertas.extend(shopify_producto(cli, tienda, enlace, moneda))
+        except Exception as exc:
+            log(f"    ficha {enlace.rsplit('/', 1)[-1]} ilegible ({exc.__class__.__name__})")
+        if len(ofertas) >= MAX_POR_TIENDA:
+            break
     if not ofertas and productos:
         raise SinResultados(
             f"la tienda respondió ({len(productos)} resultados) pero ninguno es una Gesture"
@@ -643,13 +715,14 @@ def ebay_api(cli: Cliente, tienda: str, consulta: str) -> list[Oferta]:
             Oferta(
                 tienda=tienda,
                 producto=titulo[:90],
-                precio=valor + envio,
+                precio=valor,
                 moneda=precio.get("currency", "EUR"),
                 enlace=item.get("itemWebUrl", ""),
                 entrega=entrega,
+                envio=envio,
             )
         )
-    ofertas.sort(key=lambda o: o.precio)
+    ofertas.sort(key=lambda o: o.precio + (o.envio or 0))
     return ofertas[:3]
 
 
@@ -805,7 +878,7 @@ def fusionar(nuevas: list[dict], previas: list[dict], fallidas: set[str]) -> lis
         key=lambda d: (
             d.get("Entrega") == "no",
             d.get("Estado") != "ok",
-            d.get("PrecioEUR") or d.get("Precio") or 10**9,
+            d.get("TotalEUR") or d.get("PrecioEUR") or d.get("Precio") or 10**9,
         ),
     )
 

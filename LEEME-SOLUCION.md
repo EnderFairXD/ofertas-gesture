@@ -271,3 +271,40 @@ localization=GB -> USD 620.00
 
 El scraper manda ahora `localization=ES` en todas las peticiones, así que los
 precios que publica son los que te aplican a ti, no los del país del servidor.
+
+
+---
+
+# Gastos de envío: el precio puesto en casa
+
+Comparar precios de escaparate entre países no sirve de nada. Shopify permite
+pedir la tarifa real de envío a una dirección concreta, así que el robot la
+pide y la app compara **lo que acabas pagando**:
+
+```
+Office Logix Shop   560,95 €  +  316,95 € de envío  +  21 % de IVA  =  1.062,26 €
+Steelcase Oficial  1169,00 €  +  envío gratis                      =  1.169,00 €
+```
+
+Una reacondicionada de Ohio sale 107 € más barata que una nueva con garantía
+entregada en España. Visto así, la decisión es otra.
+
+## Cómo se obtiene
+
+`/cart/shipping_rates.json` de Shopify calcula la tarifa sobre el carrito, así
+que el robot mete la silla en uno, pide la tarifa y lo vacía. Un carrito es
+efímero y vive en la sesión del propio robot: no encarga ni compra nada.
+
+Solo hay tarifa si la variante está en stock. Con el producto agotado la app
+dice «envío sin calcular» en lugar de inventarse una cifra.
+
+El destino por defecto es Madrid capital (28013). Cámbialo con las variables
+`CP_DESTINO`, `PROVINCIA_DESTINO` y `PAIS_DESTINO` si vives lejos, porque
+algunas tiendas cobran por zona.
+
+## Lo que el cálculo NO incluye
+
+El 21 % es el IVA de importación español, que se aplica sobre el valor en
+aduana (mercancía + transporte). **No** están contados los aranceles ni los
+gastos de despacho que cobra el transportista, que en un envío desde EE. UU.
+suelen ser entre 15 y 40 € más. Es decir: la cifra es un suelo, no un techo.

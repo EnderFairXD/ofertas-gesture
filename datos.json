@@ -5,11 +5,14 @@
     "Precio": 560.95,
     "Moneda": "EUR",
     "PrecioEUR": 560.95,
+    "Envio": 316.95,
+    "EnvioEUR": 316.95,
+    "TotalEUR": 1062.26,
     "Enlace": "https://www.officelogixshop.com/products/steelcase-gesture-platinum-frame-desk-chair",
     "Disponible": true,
     "Entrega": "importa",
     "Estado": "ok",
-    "Última actualización": "2026-10-01T19:26:24+00:00"
+    "Última actualización": "2026-10-01T19:31:32+00:00"
   },
   {
     "Tienda": "Steelcase Oficial (ES)",
@@ -17,11 +20,14 @@
     "Precio": 1169.0,
     "Moneda": "EUR",
     "PrecioEUR": 1169.0,
+    "Envio": 0.0,
+    "EnvioEUR": 0.0,
+    "TotalEUR": 1169.0,
     "Enlace": "https://es.steelcase.com/products/gesture",
     "Disponible": true,
     "Entrega": "es",
     "Estado": "ok",
-    "Última actualización": "2026-10-01T19:26:24+00:00"
+    "Última actualización": "2026-10-01T19:31:32+00:00"
   },
   {
     "Tienda": "The Office Crowd (reacond. ES)",
@@ -29,11 +35,14 @@
     "Precio": 783.95,
     "Moneda": "EUR",
     "PrecioEUR": 783.95,
+    "Envio": null,
+    "EnvioEUR": null,
+    "TotalEUR": null,
     "Enlace": "https://theofficecrowd.es/products/steelcase-gesture-ergonomic-office-chair-grey-fabric-refurbished",
     "Disponible": false,
     "Entrega": "importa",
     "Estado": "sin stock",
-    "Última actualización": "2026-10-01T19:26:24+00:00"
+    "Última actualización": "2026-10-01T19:31:32+00:00"
   },
   {
     "Tienda": "Chair Smith (reacond. UK)",
@@ -41,11 +50,14 @@
     "Precio": 444.0,
     "Moneda": "GBP",
     "PrecioEUR": 520.06,
+    "Envio": null,
+    "EnvioEUR": null,
+    "TotalEUR": null,
     "Enlace": "https://chairsmith.co.uk/product/steelcase-gesture-task-chair-2/",
     "Disponible": true,
     "Entrega": "no",
     "Estado": "ok",
-    "Última actualización": "2026-10-01T19:26:24+00:00"
+    "Última actualización": "2026-10-01T19:31:32+00:00"
   },
   {
     "Tienda": "Chair Smith (reacond. UK)",
@@ -53,11 +65,14 @@
     "Precio": 480.0,
     "Moneda": "GBP",
     "PrecioEUR": 562.22,
+    "Envio": null,
+    "EnvioEUR": null,
+    "TotalEUR": null,
     "Enlace": "https://chairsmith.co.uk/product/refurbished-steelcase-gesture-task-chair-2/",
     "Disponible": true,
     "Entrega": "no",
     "Estado": "ok",
-    "Última actualización": "2026-10-01T19:26:24+00:00"
+    "Última actualización": "2026-10-01T19:31:32+00:00"
   },
   {
     "Tienda": "Chair Smith (reacond. UK)",
@@ -65,11 +80,14 @@
     "Precio": 420.0,
     "Moneda": "GBP",
     "PrecioEUR": 491.95,
+    "Envio": null,
+    "EnvioEUR": null,
+    "TotalEUR": null,
     "Enlace": "https://chairsmith.co.uk/product/steelcase-gesture-task-chair-delivery-within-london-m25-2/",
     "Disponible": false,
     "Entrega": "no",
     "Estado": "sin stock",
-    "Última actualización": "2026-10-01T19:26:24+00:00"
+    "Última actualización": "2026-10-01T19:31:32+00:00"
   },
   {
     "Tienda": "Barkham Office Furniture (UK)",
@@ -77,10 +95,13 @@
     "Precio": 534.0,
     "Moneda": "GBP",
     "PrecioEUR": 625.47,
+    "Envio": null,
+    "EnvioEUR": null,
+    "TotalEUR": null,
     "Enlace": "https://barkhamofficefurniture.co.uk/steelcase-gesture-chair-43625-p.asp",
     "Disponible": false,
     "Entrega": "no",
     "Estado": "sin stock",
-    "Última actualización": "2026-10-01T19:26:24+00:00"
+    "Última actualización": "2026-10-01T19:31:32+00:00"
   }
 ]

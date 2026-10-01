@@ -246,13 +246,29 @@ img { max-width: 100%; }
   text-overflow: ellipsis;
   white-space: nowrap;
 }
+.desglose {
+  display: block;
+  margin-top: 4px;
+  font-family: var(--fuente-cifra);
+  font-size: .7rem;
+  color: var(--tinta-3);
+  letter-spacing: -.01em;
+}
 .marca-estado {
   display: inline-block;
   margin-top: 6px;
   font-size: .72rem;
   color: var(--tinta-2);
 }
-.fila[data-estado="obsoleto"] .marca-estado { color: var(--aviso); }
+.fila[data-estado="obsoleto"] .desglose {
+  display: block;
+  margin-top: 4px;
+  font-family: var(--fuente-cifra);
+  font-size: .7rem;
+  color: var(--tinta-3);
+  letter-spacing: -.01em;
+}
+.marca-estado { color: var(--aviso); }
 .fila-precio {
   display: flex;
   align-items: center;
@@ -430,7 +446,7 @@ img { max-width: 100%; }
   <p class="aviso" id="aviso" hidden></p>
 
   <section class="destacado" id="destacado" hidden>
-    <p class="etiqueta">Mejor precio ahora</p>
+    <p class="etiqueta">Más barata puesta en casa</p>
     <p class="cifra-grande" id="mejor-precio">—</p>
     <p class="destacado-pie" id="mejor-pie"></p>
     <p class="nota-destacado" id="nota-destacado" hidden></p>
@@ -544,7 +560,7 @@ img { max-width: 100%; }
   var ENTREGA = {
     es:      { chip: "",                          nota: "" },
     ue:      { chip: "Desde la UE",               nota: "" },
-    importa: { chip: "+ envío e importación",     nota: "Fuera de la UE: al precio hay que sumarle el transporte y el IVA de importación." },
+    importa: { chip: "importación incluida",      nota: "Estimación: precio + envío + 21 % de IVA de importación. No incluye aranceles ni gastos de despacho del transportista." },
     no:      { chip: "No entrega en España",      nota: "" }
   };
 
@@ -554,6 +570,22 @@ img { max-width: 100%; }
 
   function precioEur(oferta) {
     return typeof oferta.PrecioEUR === "number" ? oferta.PrecioEUR : oferta.Precio;
+  }
+
+  // Lo que acabas pagando: precio + envío (+ IVA si viene de fuera de la UE).
+  // Si la tienda no ha dado tarifa, se compara por el precio a secas.
+  function totalEur(oferta) {
+    return typeof oferta.TotalEUR === "number" ? oferta.TotalEUR : precioEur(oferta);
+  }
+
+  function desglose(oferta) {
+    if (typeof oferta.EnvioEUR !== "number") {
+      return entregaDe(oferta) === "no" ? "" : "envío sin calcular";
+    }
+    var partes = [eur.format(precioEur(oferta))];
+    partes.push(oferta.EnvioEUR === 0 ? "envío gratis" : eur.format(oferta.EnvioEUR) + " de envío");
+    if (entregaDe(oferta) === "importa") { partes.push("21 % de IVA"); }
+    return partes.join("  +  ");
   }
 
   function urlCruda(archivo) {
@@ -577,7 +609,7 @@ img { max-width: 100%; }
       var agotadaA = a.Estado !== "ok" ? 1 : 0;
       var agotadaB = b.Estado !== "ok" ? 1 : 0;
       if (agotadaA !== agotadaB) { return agotadaA - agotadaB; }
-      return precioEur(a) - precioEur(b);
+      return totalEur(a) - totalEur(b);
     });
 
     $("vacio").hidden = ofertas.length > 0;
@@ -596,7 +628,7 @@ img { max-width: 100%; }
         return o.Estado === "ok" && entregaDe(o) !== "no";
       });
       var mejor = comprables[0] || ofertas[0];
-      $("mejor-precio").textContent = sinDecimales.format(precioEur(mejor));
+      $("mejor-precio").textContent = sinDecimales.format(totalEur(mejor));
       $("mejor-pie").textContent = mejor.Tienda + " · comprobado " + hace(mejor["Última actualización"]);
       var nota = ENTREGA[entregaDe(mejor)].nota;
       $("nota-destacado").textContent = nota;
@@ -627,6 +659,9 @@ img { max-width: 100%; }
             : "Comprobado " + hace(o["Última actualización"]);
         var original = (o.Moneda && o.Moneda !== "EUR")
           ? "<small>" + escapar(moneda(o.Precio, o.Moneda)) + "</small>" : "";
+        var cuentas = desglose(o);
+        var lineaCuentas = cuentas
+          ? '<span class="desglose">' + escapar(cuentas) + "</span>" : "";
         var zona = entregaDe(o);
         var chip = ENTREGA[zona].chip
           ? '<span class="chip" data-tipo="' + zona + '">' + escapar(ENTREGA[zona].chip) + "</span>"
@@ -638,9 +673,10 @@ img { max-width: 100%; }
                    '<p class="producto">' + escapar(o.Producto || "") + "</p>" +
                    chip +
                    '<span class="marca-estado">' + escapar(marca) + "</span>" +
+                   lineaCuentas +
                  "</div>" +
                  '<div class="fila-precio">' +
-                   '<p class="precio">' + escapar(eur.format(precioEur(o))) + original + "</p>" +
+                   '<p class="precio">' + escapar(eur.format(totalEur(o))) + original + "</p>" +
                    '<a class="ver" href="' + escapar(o.Enlace || "#") +
                      '" target="_blank" rel="noopener">Ver</a>' +
                  "</div>" +
