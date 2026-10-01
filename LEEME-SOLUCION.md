@@ -232,3 +232,42 @@ solo el repositorio `ofertas-gesture` y solo el permiso **Actions: read and
 write**. Ponle caducidad. Se guarda únicamente en el `localStorage` de tu
 navegador y solo se manda a `api.github.com`; si usas la app desde un
 dispositivo que no es tuyo, no lo guardes.
+
+
+---
+
+# Zona de entrega: por qué el precio más bajo no siempre vale
+
+El rastreador encontraba sillas a 520 € y la app las ponía de titular. Al
+comprobar las políticas de envío de cada tienda, resulta que buena parte de
+esas gangas no te las pueden mandar:
+
+| Tienda | Entrega | Comprobado en |
+|---|---|---|
+| Steelcase Oficial | España | tienda española |
+| Oficinas Montiel | España | tienda española |
+| The Office Crowd (ES y UK) | España, con importación | "Realizamos envíos a […] España"; los aranceles e impuestos se cobran en el checkout |
+| Office Logix Shop | con importación | "International Shipping is now available at additional fees" |
+| **Chair Smith** | **no** | su página de entregas solo ofrece "FREE SHIPPING WITHIN LONDON M25" |
+| **Barkham Office Furniture** | **no** | "Free Chair Delivery to UK Mainland", sin envíos fuera |
+| eBay | según el anuncio | el país sale de `itemLocation.country` de cada anuncio |
+
+En la app, cada oferta lleva ahora su distintivo, las que no llegan a España
+caen al final con el borde punteado, y **el precio destacado solo tiene en
+cuenta lo que está en stock y además te pueden entregar**.
+
+## Y un efecto secundario que no esperaba
+
+Las tiendas Shopify cotizan según el mercado de la sesión. El robot corre en
+un centro de datos de EE. UU., así que Office Logix le respondía **620 $**
+mientras que a ti, desde España, te ofrece **560,95 €**. Comprobado fijando la
+cookie `localization`:
+
+```
+localization=US -> USD 620.00
+localization=ES -> EUR 560.95
+localization=GB -> USD 620.00
+```
+
+El scraper manda ahora `localization=ES` en todas las peticiones, así que los
+precios que publica son los que te aplican a ti, no los del país del servidor.

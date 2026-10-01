@@ -217,6 +217,25 @@ img { max-width: 100%; }
 }
 .fila[data-estado="obsoleto"] { border-left-color: var(--aviso); }
 .fila[data-estado="sin stock"] { border-left-color: var(--apagado); }
+.fila[data-entrega="no"] {
+  border-left-style: dashed;
+  border-left-color: var(--apagado);
+  opacity: .78;
+}
+.chip {
+  display: inline-block;
+  margin-top: 6px;
+  margin-right: 6px;
+  padding: 2px 8px;
+  border-radius: 999px;
+  font-size: .7rem;
+  font-weight: 600;
+  letter-spacing: .01em;
+}
+.chip[data-tipo="importa"] { color: var(--aviso); background: color-mix(in srgb, var(--aviso) 14%, transparent); }
+.chip[data-tipo="no"]      { color: var(--tinta-2); background: color-mix(in srgb, var(--apagado) 18%, transparent); }
+.chip[data-tipo="ue"]      { color: var(--acento); background: color-mix(in srgb, var(--acento) 14%, transparent); }
+.nota-destacado { margin: 6px 0 0; font-size: .78rem; color: var(--aviso); }
 .fila-info { flex: 1 1 190px; min-width: 0; }
 .tienda { margin: 0; font-weight: 600; font-size: .95rem; }
 .producto {
@@ -414,6 +433,7 @@ img { max-width: 100%; }
     <p class="etiqueta">Mejor precio ahora</p>
     <p class="cifra-grande" id="mejor-precio">—</p>
     <p class="destacado-pie" id="mejor-pie"></p>
+    <p class="nota-destacado" id="nota-destacado" hidden></p>
     <span class="variacion" id="variacion" hidden></span>
   </section>
 
@@ -521,6 +541,17 @@ img { max-width: 100%; }
     return "hace " + Math.round(min / 1440) + " días";
   }
 
+  var ENTREGA = {
+    es:      { chip: "",                          nota: "" },
+    ue:      { chip: "Desde la UE",               nota: "" },
+    importa: { chip: "+ envío e importación",     nota: "Fuera de la UE: al precio hay que sumarle el transporte y el IVA de importación." },
+    no:      { chip: "No entrega en España",      nota: "" }
+  };
+
+  function entregaDe(oferta) {
+    return ENTREGA[oferta.Entrega] ? oferta.Entrega : "es";
+  }
+
   function precioEur(oferta) {
     return typeof oferta.PrecioEUR === "number" ? oferta.PrecioEUR : oferta.Precio;
   }
@@ -540,6 +571,9 @@ img { max-width: 100%; }
 
   function pintar(datos, estado, origen) {
     var ofertas = (datos || []).slice().sort(function (a, b) {
+      var lejosA = entregaDe(a) === "no" ? 1 : 0;
+      var lejosB = entregaDe(b) === "no" ? 1 : 0;
+      if (lejosA !== lejosB) { return lejosA - lejosB; }
       var agotadaA = a.Estado !== "ok" ? 1 : 0;
       var agotadaB = b.Estado !== "ok" ? 1 : 0;
       if (agotadaA !== agotadaB) { return agotadaA - agotadaB; }
@@ -556,11 +590,17 @@ img { max-width: 100%; }
         " está vacío. Sube el scraper nuevo y lanza el workflow «Rastrear Precios» desde la pestaña Actions.";
       $("lista").innerHTML = "";
     } else {
-      // El destacado solo cuenta lo que se puede comprar hoy.
-      var comprables = ofertas.filter(function (o) { return o.Estado === "ok"; });
+      // El destacado solo cuenta lo que se puede comprar hoy Y te llega a casa:
+      // de poco sirve un precio buenísimo que solo se entrega en Londres.
+      var comprables = ofertas.filter(function (o) {
+        return o.Estado === "ok" && entregaDe(o) !== "no";
+      });
       var mejor = comprables[0] || ofertas[0];
       $("mejor-precio").textContent = sinDecimales.format(precioEur(mejor));
       $("mejor-pie").textContent = mejor.Tienda + " · comprobado " + hace(mejor["Última actualización"]);
+      var nota = ENTREGA[entregaDe(mejor)].nota;
+      $("nota-destacado").textContent = nota;
+      $("nota-destacado").hidden = !nota;
 
       // Variación respecto a la última vez que se miró la app.
       var previos = leer(CLAVE_PRECIOS, {});
@@ -587,10 +627,16 @@ img { max-width: 100%; }
             : "Comprobado " + hace(o["Última actualización"]);
         var original = (o.Moneda && o.Moneda !== "EUR")
           ? "<small>" + escapar(moneda(o.Precio, o.Moneda)) + "</small>" : "";
-        return '<li class="fila" data-estado="' + escapar(o.Estado || "ok") + '">' +
+        var zona = entregaDe(o);
+        var chip = ENTREGA[zona].chip
+          ? '<span class="chip" data-tipo="' + zona + '">' + escapar(ENTREGA[zona].chip) + "</span>"
+          : "";
+        return '<li class="fila" data-estado="' + escapar(o.Estado || "ok") +
+               '" data-entrega="' + zona + '">' +
                  '<div class="fila-info">' +
                    '<p class="tienda">' + escapar(o.Tienda) + "</p>" +
                    '<p class="producto">' + escapar(o.Producto || "") + "</p>" +
+                   chip +
                    '<span class="marca-estado">' + escapar(marca) + "</span>" +
                  "</div>" +
                  '<div class="fila-precio">' +

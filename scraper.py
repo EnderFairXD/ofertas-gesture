@@ -62,6 +62,11 @@ TERMINOS_EXCLUIDOS = (
     "stool", "taburete", "gas", "compatible", "replacement", "kit",
 )
 
+# Las tiendas Shopify cotizan según el mercado de la sesión: desde el runner
+# de GitHub (centro de datos en EE. UU.) la misma silla sale en dólares y a
+# otro precio. Esta cookie fija el mercado español, que es el que te aplica.
+COOKIES_PAIS = {"localization": "ES"}
+
 CABECERAS_BASE = {
     "User-Agent": (
         "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
@@ -95,6 +100,23 @@ class SinResultados(Exception):
     No es un fallo: si antes aparecía, debe retirarse del listado."""
 
 
+# Qué hace falta para que la silla llegue a tu casa:
+#   "es"      tienda española, sin más
+#   "ue"      desde la Unión Europea, sin aduanas
+#   "importa" fuera de la UE: suma transporte, IVA de importación y aranceles
+#   "no"      no entrega en España
+ENTREGA_ES = "es"
+ENTREGA_UE = "ue"
+ENTREGA_IMPORTA = "importa"
+ENTREGA_NO = "no"
+
+PAISES_UE = {
+    "AT", "BE", "BG", "HR", "CY", "CZ", "DK", "EE", "FI", "FR", "DE", "GR",
+    "HU", "IE", "IT", "LV", "LT", "LU", "MT", "NL", "PL", "PT", "RO", "SK",
+    "SI", "SE",
+}
+
+
 @dataclass
 class Oferta:
     tienda: str
@@ -103,6 +125,7 @@ class Oferta:
     moneda: str
     enlace: str
     disponible: bool = True
+    entrega: str = ENTREGA_ES
 
     def a_dict(self, cambio: dict[str, float]) -> dict:
         tasa = cambio.get(self.moneda, 1.0 if self.moneda == "EUR" else None)
@@ -114,6 +137,7 @@ class Oferta:
             "PrecioEUR": round(self.precio * tasa, 2) if tasa else None,
             "Enlace": self.enlace,
             "Disponible": self.disponible,
+            "Entrega": self.entrega,
             "Estado": "ok" if self.disponible else "sin stock",
             "Última actualización": ahora().isoformat(timespec="seconds"),
         }
@@ -201,7 +225,11 @@ class Cliente:
 
             try:
                 r = self.sesion.get(
-                    destino, timeout=TIMEOUT, headers=cabeceras, proxies=proxies
+                    destino,
+                    timeout=TIMEOUT,
+                    headers=cabeceras,
+                    proxies=proxies,
+                    cookies=COOKIES_PAIS,
                 )
             except requests.RequestException as exc:
                 ultimo_error = exc
@@ -602,6 +630,15 @@ def ebay_api(cli: Cliente, tienda: str, consulta: str) -> list[Oferta]:
             if coste:
                 envio = float(coste)
                 break
+        pais = ((item.get("itemLocation") or {}).get("country") or "").upper()
+        if pais == "ES":
+            entrega = ENTREGA_ES
+        elif pais in PAISES_UE:
+            entrega = ENTREGA_UE
+        elif pais:
+            entrega = ENTREGA_IMPORTA
+        else:
+            entrega = ENTREGA_UE  # sin país declarado, no lo damos por nacional
         ofertas.append(
             Oferta(
                 tienda=tienda,
@@ -609,6 +646,7 @@ def ebay_api(cli: Cliente, tienda: str, consulta: str) -> list[Oferta]:
                 precio=valor + envio,
                 moneda=precio.get("currency", "EUR"),
                 enlace=item.get("itemWebUrl", ""),
+                entrega=entrega,
             )
         )
     ofertas.sort(key=lambda o: o.precio)
@@ -619,53 +657,71 @@ def ebay_api(cli: Cliente, tienda: str, consulta: str) -> list[Oferta]:
 # Fuentes
 # --------------------------------------------------------------------------- #
 
-# Cada fuente es (nombre visible, adaptador, parámetros). Para añadir una
-# tienda nueva basta con una línea más: mira el LEEME para elegir adaptador.
-FUENTES: list[tuple[str, object, dict]] = [
-    (
-        "Steelcase Oficial (ES)",
-        shopify_tienda,
-        {"dominio": "https://es.steelcase.com", "handle": "gesture", "moneda": "EUR"},
-    ),
-    (
-        "The Office Crowd (reacond. ES)",
-        shopify_tienda,
-        {
+# Cada fuente declara su adaptador, sus parámetros y a dónde entrega. La zona
+# NO se deduce del país de la tienda: está comprobada en su propia página de
+# envíos, porque es lo que decide si un precio te sirve de algo.
+FUENTES: list[dict] = [
+    {
+        "nombre": "Steelcase Oficial (ES)",
+        "adaptador": shopify_tienda,
+        "params": {"dominio": "https://es.steelcase.com", "handle": "gesture", "moneda": "EUR"},
+        "entrega": ENTREGA_ES,
+    },
+    {
+        # Envía a España, pero avisan de que los aranceles e impuestos de
+        # importación se cobran al finalizar la compra.
+        "nombre": "The Office Crowd (reacond. ES)",
+        "adaptador": shopify_tienda,
+        "params": {
             "dominio": "https://theofficecrowd.es",
             "handle": "steelcase-gesture-ergonomic-office-chair-grey-fabric-refurbished",
             "moneda": "EUR",
         },
-    ),
-    (
-        "The Office Crowd (reacond. UK)",
-        shopify_tienda,
-        {"dominio": "https://theofficecrowd.com", "moneda": "GBP"},
-    ),
-    (
-        "Chair Smith (reacond. UK)",
-        woocommerce_tienda,
-        {"dominio": "https://chairsmith.co.uk", "consulta": "gesture", "moneda": "GBP"},
-    ),
-    (
-        "Barkham Office Furniture (UK)",
-        jsonld_generico,
-        {"url": "https://barkhamofficefurniture.co.uk/steelcase-gesture-chair-43625-p.asp"},
-    ),
-    (
-        "Office Logix Shop (reacond. EE. UU.)",
-        shopify_tienda,
-        {"dominio": "https://www.officelogixshop.com", "moneda": "USD"},
-    ),
-    (
-        "Oficinas Montiel (2ª mano)",
-        prestashop_busqueda,
-        {"url_busqueda": "https://www.oficinasmontiel.com/busqueda?controller=search&s=gesture"},
-    ),
-    (
-        "eBay (2ª mano)",
-        ebay_api,
-        {"consulta": "steelcase gesture"},
-    ),
+        "entrega": ENTREGA_IMPORTA,
+    },
+    {
+        "nombre": "The Office Crowd (reacond. UK)",
+        "adaptador": shopify_tienda,
+        "params": {"dominio": "https://theofficecrowd.com", "moneda": "GBP"},
+        "entrega": ENTREGA_IMPORTA,
+    },
+    {
+        # Su página de entregas dice "FREE SHIPPING WITHIN LONDON M25" y no
+        # ofrece ninguna otra zona.
+        "nombre": "Chair Smith (reacond. UK)",
+        "adaptador": woocommerce_tienda,
+        "params": {"dominio": "https://chairsmith.co.uk", "consulta": "gesture", "moneda": "GBP"},
+        "entrega": ENTREGA_NO,
+    },
+    {
+        # "Free Chair Delivery to UK Mainland"; no mencionan envíos fuera del
+        # Reino Unido en ninguna parte.
+        "nombre": "Barkham Office Furniture (UK)",
+        "adaptador": jsonld_generico,
+        "params": {"url": "https://barkhamofficefurniture.co.uk/steelcase-gesture-chair-43625-p.asp"},
+        "entrega": ENTREGA_NO,
+    },
+    {
+        # "International Shipping is now available at additional fees as well",
+        # sin detallar tarifas. Desde Ohio, además, toca IVA de importación.
+        "nombre": "Office Logix Shop (reacond. EE. UU.)",
+        "adaptador": shopify_tienda,
+        "params": {"dominio": "https://www.officelogixshop.com", "moneda": "USD"},
+        "entrega": ENTREGA_IMPORTA,
+    },
+    {
+        "nombre": "Oficinas Montiel (2ª mano)",
+        "adaptador": prestashop_busqueda,
+        "params": {"url_busqueda": "https://www.oficinasmontiel.com/busqueda?controller=search&s=gesture"},
+        "entrega": ENTREGA_ES,
+    },
+    {
+        # Cada anuncio trae su país: la zona se decide anuncio por anuncio.
+        "nombre": "eBay (2ª mano)",
+        "adaptador": ebay_api,
+        "params": {"consulta": "steelcase gesture"},
+        "entrega": ENTREGA_ES,
+    },
 ]
 
 # Tiendas que rechazan cualquier cliente automático (reto de Cloudflare incluso
@@ -747,6 +803,7 @@ def fusionar(nuevas: list[dict], previas: list[dict], fallidas: set[str]) -> lis
     return sorted(
         salida.values(),
         key=lambda d: (
+            d.get("Entrega") == "no",
             d.get("Estado") != "ok",
             d.get("PrecioEUR") or d.get("Precio") or 10**9,
         ),
@@ -761,12 +818,13 @@ def fusionar(nuevas: list[dict], previas: list[dict], fallidas: set[str]) -> lis
 def recortar(ofertas: list[Oferta]) -> list[Oferta]:
     """Una tienda puede listar la misma silla en diez tapizados. Nos quedamos
     con las más baratas, dando prioridad a las que están en stock."""
+    def orden(o: Oferta) -> tuple:
+        return (o.entrega == ENTREGA_NO, not o.disponible, o.precio)
+
     unicas: dict[tuple, Oferta] = {}
-    for o in sorted(ofertas, key=lambda o: (not o.disponible, o.precio)):
+    for o in sorted(ofertas, key=orden):
         unicas.setdefault((o.producto.lower(), round(o.precio, 2)), o)
-    return sorted(
-        unicas.values(), key=lambda o: (not o.disponible, o.precio)
-    )[:MAX_POR_TIENDA]
+    return sorted(unicas.values(), key=orden)[:MAX_POR_TIENDA]
 
 
 def main() -> int:
@@ -776,11 +834,17 @@ def main() -> int:
     cambio = tasas_cambio(cli)
 
     resultados: list[Resultado] = []
-    for nombre, funcion, parametros in FUENTES:
+    for fuente in FUENTES:
+        nombre = fuente["nombre"]
         log(f"-> {nombre}")
         res = Resultado(nombre)
         try:
-            res.ofertas = recortar(funcion(cli, nombre, **parametros))  # type: ignore[operator]
+            crudas = fuente["adaptador"](cli, nombre, **fuente["params"])
+            for oferta in crudas:
+                # eBay decide anuncio por anuncio; el resto hereda la de su tienda.
+                if oferta.entrega == ENTREGA_ES and fuente["entrega"] != ENTREGA_ES:
+                    oferta.entrega = fuente["entrega"]
+            res.ofertas = recortar(crudas)
             if res.ofertas:
                 mejor = min(res.ofertas, key=lambda o: o.precio)
                 log(f"   OK: {len(res.ofertas)} oferta(s), desde {mejor.precio:.2f} {mejor.moneda}")
