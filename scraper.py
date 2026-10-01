@@ -59,6 +59,7 @@ TERMINOS_EXCLUIDOS = (
     "funda", "cover", "repuesto", "recambio", "pieza", "spare", "part",
     "rueda", "castor", "brazo", "armrest", "armcap", "cojin", "cojín",
     "cushion", "cilindro", "cylinder", "manual", "cabecero", "headrest",
+    "stool", "taburete", "gas", "compatible", "replacement", "kit",
 )
 
 CABECERAS_BASE = {
@@ -103,9 +104,6 @@ class Oferta:
     enlace: str
     disponible: bool = True
 
-    def clave(self) -> str:
-        return f"{self.tienda}::{self.producto}".lower()
-
     def a_dict(self, cambio: dict[str, float]) -> dict:
         tasa = cambio.get(self.moneda, 1.0 if self.moneda == "EUR" else None)
         return {
@@ -134,6 +132,12 @@ class Resultado:
     @property
     def ok(self) -> bool:
         return self.error is None
+
+
+def limpiar(texto: str) -> str:
+    """Quita etiquetas HTML y espacios de más. The Office Crowd ES sirve los
+    títulos con marcas de traducción del tipo <tc>Steelcase</tc>."""
+    return re.sub(r"\s+", " ", re.sub(r"<[^>]+>", " ", texto or "")).strip()
 
 
 def interesa(titulo: str) -> bool:
@@ -345,28 +349,46 @@ def precio_desde_jsonld(html: str) -> tuple[str | None, float | None, str, bool]
 # --------------------------------------------------------------------------- #
 
 
-def shopify_producto(cli: Cliente, tienda: str, url_producto: str) -> list[Oferta]:
+def shopify_producto(
+    cli: Cliente, tienda: str, url_producto: str, moneda: str = "EUR"
+) -> list[Oferta]:
     """Una ficha concreta de una tienda Shopify. /products/<handle>.js devuelve
     el precio en céntimos y todas las variantes, sin HTML por medio."""
     base = url_producto.split("?")[0].rstrip("/")
     datos = cli.json(f"{base}.js")
-    variantes = [v for v in datos.get("variants", []) if v.get("available")]
-    if not variantes:
-        variantes = datos.get("variants", [])
+    variantes = datos.get("variants") or []
     if not variantes:
         return []
-    barata = min(variantes, key=lambda v: v.get("price") or 10**9)
-    moneda = datos.get("price_currency") or ("GBP" if ".co.uk" in base or "/uk" in base else "EUR")
+    disponibles = [v for v in variantes if v.get("available")]
+    barata = min(disponibles or variantes, key=lambda v: v.get("price") or 10**9)
     return [
         Oferta(
             tienda=tienda,
-            producto=datos.get("title", "Gesture"),
+            producto=limpiar(datos.get("title", "Gesture")),
             precio=barata["price"] / 100.0,  # Shopify da céntimos
-            moneda=moneda,
+            moneda=datos.get("price_currency") or moneda,
             enlace=url_producto,
             disponible=bool(barata.get("available")),
         )
     ]
+
+
+def shopify_tienda(
+    cli: Cliente,
+    tienda: str,
+    dominio: str,
+    moneda: str = "EUR",
+    handle: str | None = None,
+    consulta: str = "steelcase gesture",
+) -> list[Oferta]:
+    """Primero la ficha conocida; si el enlace muere (cambian el handle o
+    retiran el producto), se cae al buscador de la propia tienda."""
+    if handle:
+        try:
+            return shopify_producto(cli, tienda, f"{dominio}/products/{handle}", moneda)
+        except Exception as exc:
+            log(f"    ficha {handle} no sirve ({exc.__class__.__name__}), pruebo el buscador")
+    return shopify_busqueda(cli, tienda, dominio, consulta, moneda)
 
 
 def shopify_busqueda(
@@ -400,7 +422,7 @@ def shopify_busqueda(
         ofertas.append(
             Oferta(
                 tienda=tienda,
-                producto=titulo,
+                producto=limpiar(titulo),
                 precio=precio,
                 moneda=moneda,
                 enlace=dominio + enlace.split("?")[0] if enlace.startswith("/") else enlace,
@@ -449,6 +471,44 @@ def prestashop_busqueda(
     return ofertas
 
 
+def woocommerce_tienda(
+    cli: Cliente, tienda: str, dominio: str, consulta: str = "gesture", moneda: str = "GBP"
+) -> list[Oferta]:
+    """WooCommerce publica un Store API sin autenticación en /wp-json/wc/store.
+    Devuelve nombre, precio y existencias en JSON: nada de raspar HTML."""
+    ultimo: Exception | None = None
+    for ruta in ("/wp-json/wc/store/v1/products?search=", "/wp-json/wc/store/products?search="):
+        try:
+            items = cli.json(dominio + ruta + urllib.parse.quote(consulta))
+        except Exception as exc:
+            ultimo = exc
+            continue
+        ofertas = []
+        for p in items if isinstance(items, list) else []:
+            nombre = limpiar(p.get("name", ""))
+            if not interesa(nombre):
+                continue
+            precios = p.get("prices") or {}
+            crudo = precios.get("price")
+            if crudo in (None, ""):
+                continue
+            escala = 10 ** int(precios.get("currency_minor_unit", 2) or 2)
+            ofertas.append(
+                Oferta(
+                    tienda=tienda,
+                    producto=nombre,
+                    precio=int(crudo) / escala,
+                    moneda=precios.get("currency_code") or moneda,
+                    enlace=p.get("permalink") or dominio,
+                    disponible=bool(p.get("is_in_stock", True)),
+                )
+            )
+        if not ofertas:
+            raise SinResultados("el catálogo respondió pero no hay ninguna Gesture")
+        return ofertas
+    raise RuntimeError(f"Store API no disponible: {ultimo}")
+
+
 def jsonld_generico(
     cli: Cliente, tienda: str, url: str, render: bool = False
 ) -> list[Oferta]:
@@ -458,7 +518,7 @@ def jsonld_generico(
     nombre, precio, moneda, disponible = precio_desde_jsonld(html)
     if not precio:
         raise LookupError("la página se descargó pero no expone precio en JSON-LD")
-    return [Oferta(tienda, nombre or "Gesture", precio, moneda, url, disponible)]
+    return [Oferta(tienda, limpiar(nombre) or "Gesture", precio, moneda, url, disponible)]
 
 
 def ebay_api(cli: Cliente, tienda: str, consulta: str) -> list[Oferta]:
@@ -531,36 +591,66 @@ def ebay_api(cli: Cliente, tienda: str, consulta: str) -> list[Oferta]:
 # Fuentes
 # --------------------------------------------------------------------------- #
 
-FUENTES: list[tuple[str, object]] = [
+# Cada fuente es (nombre visible, adaptador, parámetros). Para añadir una
+# tienda nueva basta con una línea más: mira el LEEME para elegir adaptador.
+FUENTES: list[tuple[str, object, dict]] = [
     (
         "Steelcase Oficial (ES)",
-        lambda cli: shopify_producto(
-            cli, "Steelcase Oficial (ES)", "https://es.steelcase.com/products/gesture"
-        ),
+        shopify_tienda,
+        {"dominio": "https://es.steelcase.com", "handle": "gesture", "moneda": "EUR"},
+    ),
+    (
+        "The Office Crowd (reacond. ES)",
+        shopify_tienda,
+        {
+            "dominio": "https://theofficecrowd.es",
+            "handle": "steelcase-gesture-ergonomic-office-chair-grey-fabric-refurbished",
+            "moneda": "EUR",
+        },
     ),
     (
         "The Office Crowd (reacond. UK)",
-        lambda cli: shopify_busqueda(
-            cli,
-            "The Office Crowd (reacond. UK)",
-            "https://theofficecrowd.com",
-            "steelcase gesture",
-            "GBP",
-        ),
+        shopify_tienda,
+        {"dominio": "https://theofficecrowd.com", "moneda": "GBP"},
+    ),
+    (
+        "Chair Smith (reacond. UK)",
+        woocommerce_tienda,
+        {"dominio": "https://chairsmith.co.uk", "consulta": "gesture", "moneda": "GBP"},
+    ),
+    (
+        "Barkham Office Furniture (UK)",
+        jsonld_generico,
+        {"url": "https://barkhamofficefurniture.co.uk/steelcase-gesture-chair-43625-p.asp"},
+    ),
+    (
+        "Office Logix Shop (reacond. EE. UU.)",
+        shopify_tienda,
+        {"dominio": "https://www.officelogixshop.com", "moneda": "USD"},
     ),
     (
         "Oficinas Montiel (2ª mano)",
-        lambda cli: prestashop_busqueda(
-            cli,
-            "Oficinas Montiel (2ª mano)",
-            "https://www.oficinasmontiel.com/busqueda?controller=search&s=gesture",
-        ),
+        prestashop_busqueda,
+        {"url_busqueda": "https://www.oficinasmontiel.com/busqueda?controller=search&s=gesture"},
     ),
     (
         "eBay (2ª mano)",
-        lambda cli: ebay_api(cli, "eBay (2ª mano)", "steelcase gesture"),
+        ebay_api,
+        {"consulta": "steelcase gesture"},
     ),
 ]
+
+# Tiendas que rechazan cualquier cliente automático (reto de Cloudflare incluso
+# desde una IP doméstica) o que exigen cabeceras firmadas. No se rastrean: la
+# app las ofrece como enlaces para mirarlas a mano.
+A_MANO = [
+    ("Wallapop", "https://es.wallapop.com/app/search?keywords=steelcase%20gesture"),
+    ("Milanuncios", "https://www.milanuncios.com/anuncios/?s=steelcase%20gesture"),
+    ("Corporate Spec (UK)", "https://corporatespec.com/?s=steelcase+gesture&post_type=product"),
+    ("PcComponentes", "https://www.pccomponentes.com/buscar/?query=steelcase%20gesture"),
+]
+
+MAX_POR_TIENDA = 3
 
 
 # --------------------------------------------------------------------------- #
@@ -599,12 +689,17 @@ def cargar_previo() -> list[dict]:
 def fusionar(nuevas: list[dict], previas: list[dict], fallidas: set[str]) -> list[dict]:
     """Conserva el último precio conocido de las tiendas que hoy han fallado.
     Así una caída puntual nunca vacía la web."""
-    por_clave = {f"{d.get('Tienda')}::{d.get('Producto')}".lower(): d for d in previas}
-    salida = {f"{d['Tienda']}::{d['Producto']}".lower(): d for d in nuevas}
+    # El enlace entra en la clave: una tienda puede listar dos sillas con el
+    # mismo nombre y distinto precio, y no deben pisarse.
+    def clave(d: dict) -> str:
+        return f"{d.get('Tienda')}::{d.get('Producto')}::{d.get('Enlace')}".lower()
+
+    por_clave = {clave(d): d for d in previas}
+    salida = {clave(d): d for d in nuevas}
 
     limite = ahora() - timedelta(days=DIAS_CADUCIDAD)
-    for clave, viejo in por_clave.items():
-        if clave in salida:
+    for llave, viejo in por_clave.items():
+        if llave in salida:
             continue
         if viejo.get("Tienda") not in fallidas:
             continue  # la tienda respondió y ya no tiene el producto: se retira
@@ -618,17 +713,31 @@ def fusionar(nuevas: list[dict], previas: list[dict], fallidas: set[str]) -> lis
             continue
         copia = dict(viejo)
         copia["Estado"] = "obsoleto"
-        salida[clave] = copia
+        salida[llave] = copia
 
     return sorted(
         salida.values(),
-        key=lambda d: (d.get("PrecioEUR") or d.get("Precio") or 10**9),
+        key=lambda d: (
+            d.get("Estado") != "ok",
+            d.get("PrecioEUR") or d.get("Precio") or 10**9,
+        ),
     )
 
 
 # --------------------------------------------------------------------------- #
 # Programa principal
 # --------------------------------------------------------------------------- #
+
+
+def recortar(ofertas: list[Oferta]) -> list[Oferta]:
+    """Una tienda puede listar la misma silla en diez tapizados. Nos quedamos
+    con las más baratas, dando prioridad a las que están en stock."""
+    unicas: dict[tuple, Oferta] = {}
+    for o in sorted(ofertas, key=lambda o: (not o.disponible, o.precio)):
+        unicas.setdefault((o.producto.lower(), round(o.precio, 2)), o)
+    return sorted(
+        unicas.values(), key=lambda o: (not o.disponible, o.precio)
+    )[:MAX_POR_TIENDA]
 
 
 def main() -> int:
@@ -638,11 +747,11 @@ def main() -> int:
     cambio = tasas_cambio(cli)
 
     resultados: list[Resultado] = []
-    for nombre, funcion in FUENTES:
+    for nombre, funcion, parametros in FUENTES:
         log(f"-> {nombre}")
         res = Resultado(nombre)
         try:
-            res.ofertas = funcion(cli)  # type: ignore[operator]
+            res.ofertas = recortar(funcion(cli, nombre, **parametros))  # type: ignore[operator]
             if res.ofertas:
                 mejor = min(res.ofertas, key=lambda o: o.precio)
                 log(f"   OK: {len(res.ofertas)} oferta(s), desde {mejor.precio:.2f} {mejor.moneda}")
@@ -694,6 +803,7 @@ def estado(resultados: list[Resultado], total: int, vacio: bool = False) -> None
                 "ejecutado": ahora().isoformat(timespec="seconds"),
                 "ofertas_publicadas": total,
                 "conservado_sin_cambios": vacio,
+                "a_mano": [{"nombre": n, "url": u} for n, u in A_MANO],
                 "fuentes": [
                     {
                         "nombre": r.nombre,

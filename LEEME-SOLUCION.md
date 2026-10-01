@@ -168,3 +168,67 @@ precios»: es correcto, el `datos.json` del repo sigue con `[]`.
 Puedes quedártela, no estorba. La PWA la sustituye en los dos sitios y carga
 bastante más rápido, porque no levanta un servidor Python para dibujar una
 lista.
+
+
+---
+
+# Tiendas rastreadas y cómo añadir más
+
+Sondeé una docena de candidatas y estas son las que se dejan leer, con el
+adaptador que usa cada una:
+
+| Tienda | País | Plataforma | Adaptador |
+|---|---|---|---|
+| Steelcase Oficial | ES | Shopify | `shopify_tienda` |
+| The Office Crowd | ES | Shopify | `shopify_tienda` |
+| The Office Crowd | UK | Shopify | `shopify_tienda` |
+| Chair Smith | UK | WooCommerce | `woocommerce_tienda` |
+| Barkham Office Furniture | UK | ASP clásico | `jsonld_generico` |
+| Office Logix Shop | EE. UU. | Shopify | `shopify_tienda` |
+| Oficinas Montiel | ES | PrestaShop | `prestashop_busqueda` |
+| eBay | ES | API oficial | `ebay_api` |
+
+Descartadas por rechazar a los robots: **Corporate Spec** y **PcComponentes**
+(reto de Cloudflare incluso desde una IP doméstica), **Wallapop** y
+**Milanuncios** (su API exige cabeceras firmadas), **spacio.es** (403 a todo)
+y **2ndhnd.com** (el dominio no resuelve). Las cuatro primeras aparecen en la
+app como enlaces para mirarlas a mano, con la búsqueda ya hecha.
+
+## Añadir una tienda
+
+Una línea en la lista `FUENTES` de `scraper.py`. Para saber qué adaptador toca,
+mira el código fuente de su portada:
+
+- Si pone `cdn.shopify.com` → `shopify_tienda` con el `handle` de la ficha
+  (lo que va detrás de `/products/`). Si no sabes el handle, no lo pongas: se
+  usará el buscador de la tienda.
+- Si pone `woocommerce` → `woocommerce_tienda`.
+- Si no, prueba `jsonld_generico` con la URL de la ficha. Funciona en cualquier
+  tienda que publique `schema.org/Product`, que hoy son casi todas.
+
+```python
+(
+    "Mi tienda (reacond. UK)",
+    shopify_tienda,
+    {"dominio": "https://mitienda.com", "handle": "steelcase-gesture", "moneda": "GBP"},
+),
+```
+
+El filtro de títulos descarta solo (fundas, ruedas, taburetes, pistones de gas)
+y el conversor pasa libras y dólares a euros con el cambio del día.
+
+# Buscar ahora desde la app
+
+El robot pasa cada mañana, pero la app trae un botón **Buscar ahora**:
+
+- **Sin token** (por defecto): abre la página de Actions del repo para que
+  pulses *Run workflow* tú mismo, ya identificado.
+- **Con token**: lanza el workflow sin salir de la app, te enseña el progreso
+  y recarga los precios en cuanto termina (en torno a un minuto).
+
+Para lo segundo, en *Ajustes* hay un campo de token. Créalo en GitHub como
+**fine-grained personal access token** con el alcance más estrecho posible:
+solo el repositorio `ofertas-gesture` y solo el permiso **Actions: read and
+write**. Ponle caducidad. Se guarda únicamente en el `localStorage` de tu
+navegador y solo se manda a `api.github.com`; si usas la app desde un
+dispositivo que no es tuyo, no lo guardes.

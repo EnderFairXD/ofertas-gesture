@@ -320,6 +320,50 @@ img { max-width: 100%; }
 }
 :focus-visible { outline: 2px solid var(--acento); outline-offset: 2px; }
 
+/* --- Acciones y búsquedas manuales ------------------------------------ */
+.bloque {
+  margin-top: 14px;
+  padding: 16px;
+  border: 1px solid var(--linea);
+  border-radius: 12px;
+  background: var(--superficie);
+}
+.bloque h3 {
+  margin: 0 0 4px;
+  font-size: .68rem;
+  font-weight: 600;
+  letter-spacing: .09em;
+  text-transform: uppercase;
+  color: var(--tinta-3);
+}
+.bloque p { margin: 0 0 12px; font-size: .82rem; color: var(--tinta-2); }
+.boton-principal {
+  font: inherit;
+  font-size: .88rem;
+  font-weight: 600;
+  padding: 11px 18px;
+  border: 0;
+  border-radius: 10px;
+  background: var(--acento);
+  color: var(--papel);
+  cursor: pointer;
+  text-decoration: none;
+  display: inline-block;
+}
+.boton-principal:disabled { opacity: .55; cursor: progress; }
+.resultado-lanzamiento { margin: 10px 0 0; font-size: .8rem; color: var(--tinta-2); }
+.enlaces { display: flex; flex-wrap: wrap; gap: 8px; }
+.enlaces a {
+  padding: 7px 13px;
+  border: 1px solid var(--linea);
+  border-radius: 999px;
+  font-size: .82rem;
+  text-decoration: none;
+  color: var(--tinta-2);
+}
+.enlaces a:hover { border-color: var(--acento); color: var(--acento); }
+.ajustes small { font-size: .72rem; color: var(--tinta-3); line-height: 1.4; }
+
 .pie {
   margin-top: 22px;
   font-size: .72rem;
@@ -381,6 +425,21 @@ img { max-width: 100%; }
   <h2 class="seccion-titulo" id="titulo-lista" hidden>Todas las tiendas</h2>
   <ul class="lista" id="lista"></ul>
 
+  <section class="bloque">
+    <h3>Buscar ahora</h3>
+    <p id="texto-lanzar">El robot busca solo cada mañana. Puedes pedirle que
+      mire ahora mismo; tarda cerca de un minuto.</p>
+    <button class="boton-principal" id="lanzar" type="button">Buscar ahora</button>
+    <p class="resultado-lanzamiento" id="resultado-lanzamiento" hidden></p>
+  </section>
+
+  <section class="bloque" id="bloque-mano" hidden>
+    <h3>Sitios que hay que mirar a mano</h3>
+    <p>Rechazan a los robots, así que el rastreador no puede leerlos. Estos
+      enlaces abren la búsqueda ya hecha.</p>
+    <div class="enlaces" id="enlaces-mano"></div>
+  </section>
+
   <details class="panel" id="panel-estado" hidden>
     <summary>Estado del robot</summary>
     <div class="panel-cuerpo" id="cuerpo-estado"></div>
@@ -398,6 +457,16 @@ img { max-width: 100%; }
       <label>Rama
         <input id="campo-rama" name="rama" autocomplete="off" spellcheck="false">
       </label>
+      <label>Token de GitHub (opcional)
+        <input id="campo-token" name="token" type="password" autocomplete="off"
+               spellcheck="false" placeholder="github_pat_…">
+        <small>Solo si quieres que «Buscar ahora» lance el robot sin salir de la
+          app. Se guarda únicamente en este navegador y nunca viaja a ningún
+          sitio que no sea la API de GitHub. Crea un token <b>de alcance
+          limitado</b>: solo este repositorio y solo el permiso
+          <b>Actions: read and write</b>. Sin token, el botón te lleva a la
+          página de Actions para darle tú al play.</small>
+      </label>
       <button type="submit">Guardar y actualizar</button>
     </form>
   </details>
@@ -414,6 +483,7 @@ img { max-width: 100%; }
   var CLAVE_CONF = "gesture.config";
   var CLAVE_CACHE = "gesture.cache";
   var CLAVE_PRECIOS = "gesture.precios";
+  var CLAVE_TOKEN = "gesture.token";
   var MINUTO = 60000;
 
   // localStorage puede lanzar (modo privado, cookies bloqueadas): nunca debe
@@ -470,6 +540,9 @@ img { max-width: 100%; }
 
   function pintar(datos, estado, origen) {
     var ofertas = (datos || []).slice().sort(function (a, b) {
+      var agotadaA = a.Estado !== "ok" ? 1 : 0;
+      var agotadaB = b.Estado !== "ok" ? 1 : 0;
+      if (agotadaA !== agotadaB) { return agotadaA - agotadaB; }
       return precioEur(a) - precioEur(b);
     });
 
@@ -483,7 +556,9 @@ img { max-width: 100%; }
         " está vacío. Sube el scraper nuevo y lanza el workflow «Rastrear Precios» desde la pestaña Actions.";
       $("lista").innerHTML = "";
     } else {
-      var mejor = ofertas[0];
+      // El destacado solo cuenta lo que se puede comprar hoy.
+      var comprables = ofertas.filter(function (o) { return o.Estado === "ok"; });
+      var mejor = comprables[0] || ofertas[0];
       $("mejor-precio").textContent = sinDecimales.format(precioEur(mejor));
       $("mejor-pie").textContent = mejor.Tienda + " · comprobado " + hace(mejor["Última actualización"]);
 
@@ -530,11 +605,21 @@ img { max-width: 100%; }
     }
 
     pintarEstado(estado);
+    pintarManuales(estado);
 
     var sello = origen === "cache"
       ? "Sin conexión · datos guardados"
       : (ofertas.length ? "Actualizado " + hace(ofertas[0]["Última actualización"]) : "Sin precios todavía");
     $("sello").textContent = sello;
+  }
+
+  function pintarManuales(estado) {
+    var sitios = (estado && estado.a_mano) || [];
+    $("bloque-mano").hidden = sitios.length === 0;
+    $("enlaces-mano").innerHTML = sitios.map(function (s) {
+      return '<a href="' + escapar(s.url) + '" target="_blank" rel="noopener">' +
+             escapar(s.nombre) + "</a>";
+    }).join("");
   }
 
   function pintarEstado(estado) {
@@ -564,6 +649,89 @@ img { max-width: 100%; }
       if (!r.ok) { throw new Error(archivo + ": HTTP " + r.status); }
       return r.json();
     });
+  }
+
+  function urlAcciones() {
+    return "https://github.com/" + config.usuario + "/" + config.repo +
+           "/actions/workflows/robot.yml";
+  }
+
+  function selloDatos() {
+    var cache = leer(CLAVE_CACHE, null);
+    var lista = (cache && cache.datos) || [];
+    return lista.reduce(function (max, o) {
+      var t = o["Última actualización"] || "";
+      return t > max ? t : max;
+    }, "");
+  }
+
+  function decir(texto) {
+    var caja = $("resultado-lanzamiento");
+    caja.textContent = texto || "";
+    caja.hidden = !texto;
+  }
+
+  // Sin token no se puede disparar un workflow: se abre la página de Actions
+  // para que le des al botón tú mismo, ya identificado en GitHub.
+  function lanzar() {
+    var token = leer(CLAVE_TOKEN, "");
+    if (!token) {
+      window.open(urlAcciones(), "_blank", "noopener");
+      decir("Te he abierto la página de Actions: pulsa «Run workflow». " +
+            "Si prefieres hacerlo desde aquí, guarda un token en Ajustes.");
+      return;
+    }
+    var boton = $("lanzar");
+    var antes = selloDatos();
+    boton.disabled = true;
+    decir("Avisando al robot…");
+
+    fetch("https://api.github.com/repos/" + config.usuario + "/" + config.repo +
+          "/actions/workflows/robot.yml/dispatches", {
+      method: "POST",
+      headers: {
+        "Authorization": "Bearer " + token,
+        "Accept": "application/vnd.github+json",
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({ ref: config.rama })
+    }).then(function (r) {
+      if (r.status === 204) { return esperar(antes, 0); }
+      if (r.status === 401 || r.status === 403) {
+        throw new Error("el token no vale o le falta el permiso Actions sobre este repositorio");
+      }
+      if (r.status === 404) {
+        throw new Error("no encuentro el workflow robot.yml en " + config.usuario + "/" + config.repo);
+      }
+      throw new Error("GitHub respondió " + r.status);
+    }).catch(function (err) {
+      decir("No se pudo lanzar: " + err.message);
+      boton.disabled = false;
+    });
+  }
+
+  // El robot tarda alrededor de un minuto: se mira el sello de los datos hasta
+  // que cambie, con un tope de tres minutos.
+  function esperar(sello, intento) {
+    if (intento > 18) {
+      decir("El robot sigue trabajando. Dale a la flecha de arriba dentro de un rato.");
+      $("lanzar").disabled = false;
+      return;
+    }
+    decir("El robot está buscando… (" + (intento * 10) + " s)");
+    return new Promise(function (listo) { setTimeout(listo, 10000); })
+      .then(function () { return traer("datos.json"); })
+      .then(function (datos) {
+        var nuevo = (datos || []).reduce(function (max, o) {
+          var t = o["Última actualización"] || "";
+          return t > max ? t : max;
+        }, "");
+        if (sello && nuevo <= sello) { return esperar(sello, intento + 1); }
+        decir("Listo: precios recién comprobados.");
+        $("lanzar").disabled = false;
+        return cargar();
+      })
+      .catch(function () { return esperar(sello, intento + 1); });
   }
 
   var cargando = false;
@@ -611,11 +779,24 @@ img { max-width: 100%; }
       rama: $("campo-rama").value.trim() || POR_DEFECTO.rama
     };
     escribir(CLAVE_CONF, config);
+    escribir(CLAVE_TOKEN, $("campo-token").value.trim());
+    ajustarTextoLanzar();
     $("enlace-repo").href = "https://github.com/" + config.usuario + "/" + config.repo;
     cargar();
   });
 
   $("recargar").addEventListener("click", cargar);
+  $("lanzar").addEventListener("click", lanzar);
+
+  function ajustarTextoLanzar() {
+    var hay = !!leer(CLAVE_TOKEN, "");
+    $("texto-lanzar").textContent = hay
+      ? "El robot busca solo cada mañana. Pulsa para que mire ahora mismo; tarda cerca de un minuto."
+      : "El robot busca solo cada mañana. Este botón abre la página de Actions para lanzarlo a mano; "
+        + "si guardas un token en Ajustes, lo lanzará sin salir de aquí.";
+  }
+  ajustarTextoLanzar();
+  $("campo-token").value = leer(CLAVE_TOKEN, "");
 
   // Al volver a la app desde segundo plano, refrescar si han pasado 5 minutos.
   document.addEventListener("visibilitychange", function () {

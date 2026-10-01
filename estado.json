@@ -1,10 +1,35 @@
 {
-  "ejecutado": "2026-10-01T18:24:28+00:00",
-  "ofertas_publicadas": 1,
+  "ejecutado": "2026-10-01T18:37:26+00:00",
+  "ofertas_publicadas": 7,
   "conservado_sin_cambios": false,
+  "a_mano": [
+    {
+      "nombre": "Wallapop",
+      "url": "https://es.wallapop.com/app/search?keywords=steelcase%20gesture"
+    },
+    {
+      "nombre": "Milanuncios",
+      "url": "https://www.milanuncios.com/anuncios/?s=steelcase%20gesture"
+    },
+    {
+      "nombre": "Corporate Spec (UK)",
+      "url": "https://corporatespec.com/?s=steelcase+gesture&post_type=product"
+    },
+    {
+      "nombre": "PcComponentes",
+      "url": "https://www.pccomponentes.com/buscar/?query=steelcase%20gesture"
+    }
+  ],
   "fuentes": [
     {
       "nombre": "Steelcase Oficial (ES)",
+      "ok": true,
+      "omitida": false,
+      "ofertas": 1,
+      "detalle": null
+    },
+    {
+      "nombre": "The Office Crowd (reacond. ES)",
       "ok": true,
       "omitida": false,
       "ofertas": 1,
@@ -16,6 +41,27 @@
       "omitida": false,
       "ofertas": 0,
       "detalle": "la tienda respondió (10 resultados) pero ninguno es una Gesture"
+    },
+    {
+      "nombre": "Chair Smith (reacond. UK)",
+      "ok": true,
+      "omitida": false,
+      "ofertas": 3,
+      "detalle": null
+    },
+    {
+      "nombre": "Barkham Office Furniture (UK)",
+      "ok": true,
+      "omitida": false,
+      "ofertas": 1,
+      "detalle": null
+    },
+    {
+      "nombre": "Office Logix Shop (reacond. EE. UU.)",
+      "ok": true,
+      "omitida": false,
+      "ofertas": 1,
+      "detalle": null
     },
     {
       "nombre": "Oficinas Montiel (2ª mano)",
