@@ -2,29 +2,69 @@ name: Rastrear Precios
 
 on:
   schedule:
-    - cron: '0 8 * * *' # Se ejecuta todos los días a las 8:00 AM
-  workflow_dispatch: # Permite que lo ejecutes a mano cuando quieras
+    # 06:00 UTC = 08:00 en España en horario de verano (07:00 en invierno).
+    # El cron de GitHub SIEMPRE va en UTC.
+    - cron: '0 6 * * *'
+  workflow_dispatch:
 
 permissions:
   contents: write
 
+# Evita que dos ejecuciones se pisen al hacer push del mismo archivo.
+concurrency:
+  group: rastreo-precios
+  cancel-in-progress: false
+
 jobs:
-  build:
+  rastrear:
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     steps:
-      - uses: actions/checkout@v3
-      - name: Configurar Python
-        uses: actions/setup-python@v4
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
         with:
-          python-version: '3.10'
-      - name: Instalar librerías
-        run: pip install cloudscraper beautifulsoup4
+          python-version: '3.12'
+          cache: pip
+
+      - name: Instalar dependencias
+        run: pip install -r requirements-scraper.txt
+
       - name: Ejecutar robot
+        id: rastreo
+        continue-on-error: true      # queremos guardar y diagnosticar aunque falle
+        env:
+          EBAY_CLIENT_ID: ${{ secrets.EBAY_CLIENT_ID }}
+          EBAY_CLIENT_SECRET: ${{ secrets.EBAY_CLIENT_SECRET }}
+          EBAY_MARKETPLACE: EBAY_ES
+          SCRAPERAPI_KEY: ${{ secrets.SCRAPERAPI_KEY }}   # opcional
         run: python scraper.py
+
+      - name: Subir respuestas fallidas para inspección
+        if: always() && hashFiles('debug/**') != ''
+        uses: actions/upload-artifact@v4
+        with:
+          name: html-bloqueado
+          path: debug/
+          retention-days: 7
+
       - name: Guardar nuevos precios
+        if: always()
         run: |
-          git config --global user.name 'Robot'
-          git config --global user.email 'robot@acciones.com'
-          git add datos.json
-          git commit -m "Actualizar precios" || exit 0
-          git push
+          git config user.name  'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add datos.json estado.json
+          git diff --cached --quiet && { echo "Sin cambios."; exit 0; }
+          git commit -m "Actualizar precios ($(date -u +%Y-%m-%d))"
+          # Reintento ante carreras con otros pushes al repositorio.
+          for i in 1 2 3; do
+            git pull --rebase --autostash origin "${GITHUB_REF_NAME}" && git push && exit 0
+            echo "Push fallido, reintento $i"; sleep 5
+          done
+          exit 1
+
+      - name: Marcar el workflow en rojo si el rastreo falló
+        if: steps.rastreo.outcome == 'failure'
+        run: |
+          echo "::error::El rastreo no obtuvo ningún precio. Revisa estado.json y el artefacto html-bloqueado."
+          exit 1

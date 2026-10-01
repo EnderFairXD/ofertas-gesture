@@ -1,4 +1,2 @@
-streamlit
-pandas
-requests
-beautifulsoup4
+# Lo que instala Streamlit Cloud para servir app.py
+streamlit>=1.40

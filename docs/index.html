@@ -1,0 +1,638 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Monitor Gesture</title>
+<meta name="description" content="Precio de la Steelcase Gesture en varias tiendas, actualizado cada mañana.">
+<meta name="theme-color" content="#16202a">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<link rel="icon" href="favicon-32.png" sizes="32x32">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Gesture">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@500;600;700&family=IBM+Plex+Mono:wght@500;600&display=swap">
+<style>
+/* Ficha de catálogo: cabecera fija, precio destacado y una fila por tienda,
+   con los importes alineados a la derecha para poder compararlos de un vistazo. */
+:root {
+  --papel:      #f4f6f8;
+  --superficie: #ffffff;
+  --tinta:      #16202a;
+  --tinta-2:    #566675;
+  --tinta-3:    #8b99a6;
+  --linea:      #dde3e9;
+  --acento:     #2c6b8a;
+  --baja:       #1f7a52;
+  --aviso:      #a7661d;
+  --apagado:    #8b99a6;
+  --sombra:     0 1px 2px rgba(22, 32, 42, .06), 0 8px 24px -16px rgba(22, 32, 42, .25);
+
+  --fuente-ui:    'Archivo', system-ui, -apple-system, 'Segoe UI', sans-serif;
+  --fuente-cifra: 'IBM Plex Mono', ui-monospace, 'SF Mono', Menlo, monospace;
+
+  color-scheme: light;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --papel:      #0f161d;
+    --superficie: #18212b;
+    --tinta:      #e7edf3;
+    --tinta-2:    #9fb0bf;
+    --tinta-3:    #6c7d8c;
+    --linea:      #27333f;
+    --acento:     #6fb3d2;
+    --baja:       #4cc38a;
+    --aviso:      #e2963e;
+    --apagado:    #6c7d8c;
+    --sombra:     0 1px 2px rgba(0, 0, 0, .4);
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --papel:      #0f161d;
+  --superficie: #18212b;
+  --tinta:      #e7edf3;
+  --tinta-2:    #9fb0bf;
+  --tinta-3:    #6c7d8c;
+  --linea:      #27333f;
+  --acento:     #6fb3d2;
+  --baja:       #4cc38a;
+  --aviso:      #e2963e;
+  --apagado:    #6c7d8c;
+  --sombra:     0 1px 2px rgba(0, 0, 0, .4);
+  color-scheme: dark;
+}
+
+* { box-sizing: border-box; }
+html, body { margin: 0; }
+body {
+  background: var(--papel);
+  color: var(--tinta);
+  font-family: var(--fuente-ui);
+  font-size: 16px;
+  line-height: 1.45;
+  -webkit-font-smoothing: antialiased;
+  padding-bottom: calc(24px + env(safe-area-inset-bottom, 0px));
+}
+img { max-width: 100%; }
+[hidden] { display: none !important; }
+
+.envoltorio {
+  max-width: 760px;
+  margin: 0 auto;
+  padding-inline: 16px;
+}
+
+/* --- Cabecera --------------------------------------------------------- */
+.cabecera {
+  position: sticky;
+  top: env(safe-area-inset-top, 0px);
+  z-index: 10;
+  background: color-mix(in srgb, var(--papel) 88%, transparent);
+  backdrop-filter: blur(12px);
+  border-bottom: 1px solid var(--linea);
+}
+.cabecera-fila {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding-block: 12px;
+}
+.logotipo { width: 34px; height: 34px; border-radius: 9px; flex: none; }
+.titulos { flex: 1; min-width: 0; }
+.titulos h1 {
+  margin: 0;
+  font-size: 1.05rem;
+  font-weight: 700;
+  letter-spacing: -.01em;
+}
+.titulos p {
+  margin: 0;
+  font-size: .75rem;
+  color: var(--tinta-3);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.recargar {
+  flex: none;
+  width: 40px; height: 40px;
+  display: grid; place-items: center;
+  border: 1px solid var(--linea);
+  border-radius: 10px;
+  background: var(--superficie);
+  color: var(--tinta-2);
+  cursor: pointer;
+}
+.recargar:hover { color: var(--acento); border-color: var(--acento); }
+.recargar svg { width: 18px; height: 18px; }
+.recargar[data-cargando="si"] svg { animation: giro 1s linear infinite; }
+@keyframes giro { to { transform: rotate(360deg); } }
+@media (prefers-reduced-motion: reduce) {
+  .recargar[data-cargando="si"] svg { animation: none; opacity: .5; }
+}
+
+/* --- Aviso ------------------------------------------------------------ */
+.aviso {
+  margin-top: 16px;
+  padding: 10px 14px;
+  border: 1px solid var(--linea);
+  border-left: 3px solid var(--aviso);
+  border-radius: 8px;
+  background: var(--superficie);
+  font-size: .82rem;
+  color: var(--tinta-2);
+}
+
+/* --- Precio destacado ------------------------------------------------- */
+.destacado {
+  margin-top: 20px;
+  padding: 20px;
+  border-radius: 14px;
+  background: var(--superficie);
+  border: 1px solid var(--linea);
+  box-shadow: var(--sombra);
+}
+.etiqueta {
+  margin: 0;
+  font-size: .68rem;
+  font-weight: 600;
+  letter-spacing: .09em;
+  text-transform: uppercase;
+  color: var(--tinta-3);
+}
+.cifra-grande {
+  margin: 6px 0 0;
+  font-family: var(--fuente-cifra);
+  font-variant-numeric: tabular-nums;
+  font-size: clamp(2.4rem, 11vw, 3.4rem);
+  font-weight: 600;
+  letter-spacing: -.03em;
+  word-spacing: -.22em;
+  line-height: 1;
+}
+.destacado-pie {
+  margin: 10px 0 0;
+  font-size: .88rem;
+  color: var(--tinta-2);
+}
+.variacion {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 4px;
+  margin-top: 10px;
+  padding: 3px 9px;
+  border-radius: 999px;
+  font-family: var(--fuente-cifra);
+  font-size: .78rem;
+  font-weight: 600;
+}
+.variacion[data-sentido="baja"] { color: var(--baja); background: color-mix(in srgb, var(--baja) 13%, transparent); }
+.variacion[data-sentido="sube"] { color: var(--aviso); background: color-mix(in srgb, var(--aviso) 13%, transparent); }
+
+/* --- Lista de tiendas -------------------------------------------------- */
+.seccion-titulo {
+  margin: 28px 0 10px;
+  font-size: .68rem;
+  font-weight: 600;
+  letter-spacing: .09em;
+  text-transform: uppercase;
+  color: var(--tinta-3);
+}
+.lista { list-style: none; margin: 0; padding: 0; display: grid; gap: 10px; }
+.fila {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px;
+  padding: 14px 16px;
+  background: var(--superficie);
+  border: 1px solid var(--linea);
+  border-left: 3px solid var(--acento);
+  border-radius: 12px;
+}
+.fila[data-estado="obsoleto"] { border-left-color: var(--aviso); }
+.fila[data-estado="sin stock"] { border-left-color: var(--apagado); }
+.fila-info { flex: 1 1 190px; min-width: 0; }
+.tienda { margin: 0; font-weight: 600; font-size: .95rem; }
+.producto {
+  margin: 2px 0 0;
+  font-size: .8rem;
+  color: var(--tinta-3);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.marca-estado {
+  display: inline-block;
+  margin-top: 6px;
+  font-size: .72rem;
+  color: var(--tinta-2);
+}
+.fila[data-estado="obsoleto"] .marca-estado { color: var(--aviso); }
+.fila-precio {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  margin-left: auto;
+}
+.precio {
+  margin: 0;
+  text-align: right;
+  font-family: var(--fuente-cifra);
+  font-variant-numeric: tabular-nums;
+  font-size: 1.22rem;
+  font-weight: 600;
+  letter-spacing: -.02em;
+  word-spacing: -.18em;
+}
+.precio small {
+  display: block;
+  font-size: .68rem;
+  font-weight: 500;
+  color: var(--tinta-3);
+  letter-spacing: 0;
+}
+.ver {
+  flex: none;
+  padding: 8px 14px;
+  border-radius: 9px;
+  background: var(--acento);
+  color: var(--papel);
+  font-size: .82rem;
+  font-weight: 600;
+  text-decoration: none;
+  white-space: nowrap;
+}
+.ver:hover { filter: brightness(1.08); }
+
+/* --- Estado del robot -------------------------------------------------- */
+.panel {
+  margin-top: 14px;
+  border: 1px solid var(--linea);
+  border-radius: 12px;
+  background: var(--superficie);
+  overflow: hidden;
+}
+.panel > summary {
+  padding: 12px 16px;
+  cursor: pointer;
+  font-size: .85rem;
+  font-weight: 600;
+  color: var(--tinta-2);
+}
+.panel > summary::marker { color: var(--tinta-3); }
+.panel-cuerpo { padding: 0 16px 14px; display: grid; gap: 9px; }
+.fuente { display: flex; gap: 9px; font-size: .82rem; align-items: start; }
+.punto { flex: none; width: 8px; height: 8px; margin-top: 7px; border-radius: 50%; background: var(--apagado); }
+.fuente[data-ok="si"] .punto   { background: var(--baja); }
+.fuente[data-ok="no"] .punto   { background: var(--aviso); }
+.fuente b { font-weight: 600; }
+.fuente span { color: var(--tinta-3); }
+
+.ajustes { display: grid; gap: 10px; padding: 0 16px 16px; }
+.ajustes label { display: grid; gap: 4px; font-size: .78rem; color: var(--tinta-2); }
+.ajustes input {
+  font: inherit;
+  font-size: .9rem;
+  padding: 9px 11px;
+  border: 1px solid var(--linea);
+  border-radius: 9px;
+  background: var(--papel);
+  color: var(--tinta);
+  min-width: 0;
+}
+.ajustes button {
+  justify-self: start;
+  font: inherit;
+  font-size: .85rem;
+  font-weight: 600;
+  padding: 9px 16px;
+  border: 0;
+  border-radius: 9px;
+  background: var(--acento);
+  color: var(--papel);
+  cursor: pointer;
+}
+:focus-visible { outline: 2px solid var(--acento); outline-offset: 2px; }
+
+.pie {
+  margin-top: 22px;
+  font-size: .72rem;
+  color: var(--tinta-3);
+  text-align: center;
+}
+.pie a { color: var(--tinta-2); }
+
+.vacio {
+  margin-top: 20px;
+  padding: 28px 20px;
+  text-align: center;
+  border: 1px dashed var(--linea);
+  border-radius: 14px;
+  color: var(--tinta-2);
+  font-size: .9rem;
+}
+.vacio strong { display: block; margin-bottom: 6px; color: var(--tinta); font-size: 1rem; }
+
+@media (min-width: 620px) {
+  .cifra-grande { font-size: 3.4rem; }
+  .producto { white-space: normal; }
+}
+</style>
+</head>
+<body>
+
+<header class="cabecera">
+  <div class="envoltorio cabecera-fila">
+    <img class="logotipo" src="icon-192.png" alt="" width="34" height="34">
+    <div class="titulos">
+      <h1>Steelcase Gesture</h1>
+      <p id="sello">Cargando precios…</p>
+    </div>
+    <button class="recargar" id="recargar" type="button" title="Actualizar" aria-label="Actualizar">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+           stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+        <path d="M21 12a9 9 0 1 1-2.64-6.36"></path><path d="M21 3v6h-6"></path>
+      </svg>
+    </button>
+  </div>
+</header>
+
+<main class="envoltorio">
+  <p class="aviso" id="aviso" hidden></p>
+
+  <section class="destacado" id="destacado" hidden>
+    <p class="etiqueta">Mejor precio ahora</p>
+    <p class="cifra-grande" id="mejor-precio">—</p>
+    <p class="destacado-pie" id="mejor-pie"></p>
+    <span class="variacion" id="variacion" hidden></span>
+  </section>
+
+  <div class="vacio" id="vacio" hidden>
+    <strong>Todavía no hay precios</strong>
+    <span id="vacio-texto"></span>
+  </div>
+
+  <h2 class="seccion-titulo" id="titulo-lista" hidden>Todas las tiendas</h2>
+  <ul class="lista" id="lista"></ul>
+
+  <details class="panel" id="panel-estado" hidden>
+    <summary>Estado del robot</summary>
+    <div class="panel-cuerpo" id="cuerpo-estado"></div>
+  </details>
+
+  <details class="panel">
+    <summary>Ajustes</summary>
+    <form class="ajustes" id="formulario">
+      <label>Usuario de GitHub
+        <input id="campo-usuario" name="usuario" autocomplete="off" spellcheck="false">
+      </label>
+      <label>Repositorio
+        <input id="campo-repo" name="repo" autocomplete="off" spellcheck="false">
+      </label>
+      <label>Rama
+        <input id="campo-rama" name="rama" autocomplete="off" spellcheck="false">
+      </label>
+      <button type="submit">Guardar y actualizar</button>
+    </form>
+  </details>
+
+  <p class="pie">Los precios los publica tu robot de GitHub Actions cada mañana.<br>
+    <a id="enlace-repo" href="#" target="_blank" rel="noopener">Ver el repositorio</a></p>
+</main>
+
+<script>
+(function () {
+  "use strict";
+
+  var POR_DEFECTO = { usuario: "EnderFairXD", repo: "ofertas-gesture", rama: "main" };
+  var CLAVE_CONF = "gesture.config";
+  var CLAVE_CACHE = "gesture.cache";
+  var CLAVE_PRECIOS = "gesture.precios";
+  var MINUTO = 60000;
+
+  // localStorage puede lanzar (modo privado, cookies bloqueadas): nunca debe
+  // tumbar la página.
+  function leer(clave, porDefecto) {
+    try {
+      var crudo = localStorage.getItem(clave);
+      return crudo ? JSON.parse(crudo) : porDefecto;
+    } catch (e) { return porDefecto; }
+  }
+  function escribir(clave, valor) {
+    try { localStorage.setItem(clave, JSON.stringify(valor)); } catch (e) { /* sin persistencia */ }
+  }
+
+  var config = Object.assign({}, POR_DEFECTO, leer(CLAVE_CONF, {}));
+
+  var eur = new Intl.NumberFormat("es-ES", { style: "currency", currency: "EUR" });
+  var sinDecimales = new Intl.NumberFormat("es-ES", {
+    style: "currency", currency: "EUR", maximumFractionDigits: 0
+  });
+
+  function moneda(valor, divisa) {
+    try {
+      return new Intl.NumberFormat("es-ES", { style: "currency", currency: divisa || "EUR" }).format(valor);
+    } catch (e) { return valor + " " + (divisa || ""); }
+  }
+
+  function hace(iso) {
+    var fecha = new Date(iso);
+    if (isNaN(fecha)) { return "fecha desconocida"; }
+    var min = (Date.now() - fecha.getTime()) / MINUTO;
+    if (min < 2) { return "ahora mismo"; }
+    if (min < 60) { return "hace " + Math.round(min) + " min"; }
+    if (min < 60 * 36) { return "hace " + Math.round(min / 60) + " h"; }
+    return "hace " + Math.round(min / 1440) + " días";
+  }
+
+  function precioEur(oferta) {
+    return typeof oferta.PrecioEUR === "number" ? oferta.PrecioEUR : oferta.Precio;
+  }
+
+  function urlCruda(archivo) {
+    return "https://raw.githubusercontent.com/" + config.usuario + "/" + config.repo +
+           "/" + config.rama + "/" + archivo + "?t=" + Date.now();
+  }
+
+  var $ = function (id) { return document.getElementById(id); };
+
+  function mostrarAviso(texto) {
+    var caja = $("aviso");
+    caja.textContent = texto || "";
+    caja.hidden = !texto;
+  }
+
+  function pintar(datos, estado, origen) {
+    var ofertas = (datos || []).slice().sort(function (a, b) {
+      return precioEur(a) - precioEur(b);
+    });
+
+    $("vacio").hidden = ofertas.length > 0;
+    $("destacado").hidden = ofertas.length === 0;
+    $("titulo-lista").hidden = ofertas.length === 0;
+
+    if (!ofertas.length) {
+      $("vacio-texto").textContent =
+        "El archivo datos.json de " + config.usuario + "/" + config.repo +
+        " está vacío. Sube el scraper nuevo y lanza el workflow «Rastrear Precios» desde la pestaña Actions.";
+      $("lista").innerHTML = "";
+    } else {
+      var mejor = ofertas[0];
+      $("mejor-precio").textContent = sinDecimales.format(precioEur(mejor));
+      $("mejor-pie").textContent = mejor.Tienda + " · comprobado " + hace(mejor["Última actualización"]);
+
+      // Variación respecto a la última vez que se miró la app.
+      var previos = leer(CLAVE_PRECIOS, {});
+      var clave = mejor.Tienda + "::" + mejor.Producto;
+      var antes = previos[clave];
+      var pastilla = $("variacion");
+      if (typeof antes === "number" && Math.abs(antes - precioEur(mejor)) >= 1) {
+        var delta = precioEur(mejor) - antes;
+        pastilla.dataset.sentido = delta < 0 ? "baja" : "sube";
+        pastilla.textContent = (delta < 0 ? "▼ " : "▲ ") + eur.format(Math.abs(delta)) +
+                               " desde tu última visita";
+        pastilla.hidden = false;
+      } else {
+        pastilla.hidden = true;
+      }
+
+      var instantanea = {};
+      var html = ofertas.map(function (o) {
+        instantanea[o.Tienda + "::" + o.Producto] = precioEur(o);
+        var marca = o.Estado === "obsoleto"
+          ? "La tienda no respondió hoy · último precio " + hace(o["Última actualización"])
+          : (o.Disponible === false || o.Estado === "sin stock")
+            ? "Aparece agotada"
+            : "Comprobado " + hace(o["Última actualización"]);
+        var original = (o.Moneda && o.Moneda !== "EUR")
+          ? "<small>" + escapar(moneda(o.Precio, o.Moneda)) + "</small>" : "";
+        return '<li class="fila" data-estado="' + escapar(o.Estado || "ok") + '">' +
+                 '<div class="fila-info">' +
+                   '<p class="tienda">' + escapar(o.Tienda) + "</p>" +
+                   '<p class="producto">' + escapar(o.Producto || "") + "</p>" +
+                   '<span class="marca-estado">' + escapar(marca) + "</span>" +
+                 "</div>" +
+                 '<div class="fila-precio">' +
+                   '<p class="precio">' + escapar(eur.format(precioEur(o))) + original + "</p>" +
+                   '<a class="ver" href="' + escapar(o.Enlace || "#") +
+                     '" target="_blank" rel="noopener">Ver</a>' +
+                 "</div>" +
+               "</li>";
+      }).join("");
+      $("lista").innerHTML = html;
+      escribir(CLAVE_PRECIOS, instantanea);
+    }
+
+    pintarEstado(estado);
+
+    var sello = origen === "cache"
+      ? "Sin conexión · datos guardados"
+      : (ofertas.length ? "Actualizado " + hace(ofertas[0]["Última actualización"]) : "Sin precios todavía");
+    $("sello").textContent = sello;
+  }
+
+  function pintarEstado(estado) {
+    var panel = $("panel-estado");
+    if (!estado || !estado.fuentes) { panel.hidden = true; return; }
+    panel.hidden = false;
+    $("cuerpo-estado").innerHTML = estado.fuentes.map(function (f) {
+      var ok = f.ok && f.ofertas ? "si" : (f.ok ? "neutro" : "no");
+      return '<div class="fuente" data-ok="' + ok + '">' +
+               '<i class="punto"></i>' +
+               "<div><b>" + escapar(f.nombre) + "</b><br><span>" +
+                 escapar(f.detalle || (f.ofertas + " oferta(s)")) + "</span></div>" +
+             "</div>";
+    }).join("") +
+    '<div class="fuente"><i class="punto"></i><div><span>Última ejecución ' +
+      escapar(hace(estado.ejecutado)) + "</span></div></div>";
+  }
+
+  function escapar(texto) {
+    return String(texto).replace(/[&<>"']/g, function (c) {
+      return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c];
+    });
+  }
+
+  function traer(archivo) {
+    return fetch(urlCruda(archivo), { cache: "no-store" }).then(function (r) {
+      if (!r.ok) { throw new Error(archivo + ": HTTP " + r.status); }
+      return r.json();
+    });
+  }
+
+  var cargando = false;
+  function cargar() {
+    if (cargando) { return; }
+    cargando = true;
+    $("recargar").dataset.cargando = "si";
+    mostrarAviso("");
+
+    Promise.all([traer("datos.json"), traer("estado.json").catch(function () { return null; })])
+      .then(function (res) {
+        escribir(CLAVE_CACHE, { datos: res[0], estado: res[1], ts: Date.now() });
+        pintar(res[0], res[1], "red");
+      })
+      .catch(function (err) {
+        var cache = leer(CLAVE_CACHE, null);
+        if (cache) {
+          pintar(cache.datos, cache.estado, "cache");
+          mostrarAviso("No se pudo conectar con GitHub. Mostrando los datos guardados del " +
+                       new Date(cache.ts).toLocaleString("es-ES") + ".");
+        } else {
+          $("vacio").hidden = false;
+          $("vacio-texto").textContent = "No se pudo leer " + config.usuario + "/" + config.repo +
+            ". Revisa el usuario, el repositorio y la rama en Ajustes.";
+          mostrarAviso("Error de conexión: " + err.message);
+        }
+      })
+      .then(function () {
+        cargando = false;
+        $("recargar").dataset.cargando = "no";
+      });
+  }
+
+  // --- Arranque -------------------------------------------------------- //
+  $("campo-usuario").value = config.usuario;
+  $("campo-repo").value = config.repo;
+  $("campo-rama").value = config.rama;
+  $("enlace-repo").href = "https://github.com/" + config.usuario + "/" + config.repo;
+
+  $("formulario").addEventListener("submit", function (ev) {
+    ev.preventDefault();
+    config = {
+      usuario: $("campo-usuario").value.trim() || POR_DEFECTO.usuario,
+      repo: $("campo-repo").value.trim() || POR_DEFECTO.repo,
+      rama: $("campo-rama").value.trim() || POR_DEFECTO.rama
+    };
+    escribir(CLAVE_CONF, config);
+    $("enlace-repo").href = "https://github.com/" + config.usuario + "/" + config.repo;
+    cargar();
+  });
+
+  $("recargar").addEventListener("click", cargar);
+
+  // Al volver a la app desde segundo plano, refrescar si han pasado 5 minutos.
+  document.addEventListener("visibilitychange", function () {
+    if (document.visibilityState !== "visible") { return; }
+    var cache = leer(CLAVE_CACHE, null);
+    if (!cache || Date.now() - cache.ts > 5 * MINUTO) { cargar(); }
+  });
+
+  // Primer pintado instantáneo con lo guardado, luego red.
+  var cache = leer(CLAVE_CACHE, null);
+  if (cache) { pintar(cache.datos, cache.estado, "cache"); }
+  cargar();
+
+  if ("serviceWorker" in navigator && location.protocol.indexOf("http") === 0) {
+    navigator.serviceWorker.register("sw.js").catch(function () { /* sigue funcionando sin él */ });
+  }
+})();
+</script>
+</body>
+</html>

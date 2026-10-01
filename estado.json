@@ -1,0 +1,35 @@
+{
+  "ejecutado": "2026-10-01T18:19:05+00:00",
+  "ofertas_publicadas": 1,
+  "conservado_sin_cambios": false,
+  "fuentes": [
+    {
+      "nombre": "Steelcase Oficial (ES)",
+      "ok": true,
+      "omitida": false,
+      "ofertas": 1,
+      "detalle": null
+    },
+    {
+      "nombre": "The Office Crowd (reacond. UK)",
+      "ok": true,
+      "omitida": false,
+      "ofertas": 0,
+      "detalle": "la tienda respondió (10 resultados) pero ninguno es una Gesture"
+    },
+    {
+      "nombre": "Oficinas Montiel (2ª mano)",
+      "ok": true,
+      "omitida": false,
+      "ofertas": 0,
+      "detalle": "el buscador respondió pero no hay ninguna Gesture en el catálogo"
+    },
+    {
+      "nombre": "eBay (2ª mano)",
+      "ok": false,
+      "omitida": true,
+      "ofertas": 0,
+      "detalle": "faltan EBAY_CLIENT_ID / EBAY_CLIENT_SECRET (regístrate en developer.ebay.com)"
+    }
+  ]
+}

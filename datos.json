@@ -1,1 +1,13 @@
-[]
+[
+  {
+    "Tienda": "Steelcase Oficial (ES)",
+    "Producto": "Gesture – Silla de oficina ergonómica",
+    "Precio": 1169.0,
+    "Moneda": "EUR",
+    "PrecioEUR": 1169.0,
+    "Enlace": "https://es.steelcase.com/products/gesture",
+    "Disponible": true,
+    "Estado": "ok",
+    "Última actualización": "2026-10-01T18:19:05+00:00"
+  }
+]

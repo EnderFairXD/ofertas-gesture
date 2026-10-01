@@ -1,0 +1,17 @@
+{
+  "name": "Monitor Gesture",
+  "short_name": "Gesture",
+  "description": "Precio de la Steelcase Gesture en varias tiendas, actualizado cada mañana.",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "portrait-primary",
+  "background_color": "#16202a",
+  "theme_color": "#16202a",
+  "lang": "es",
+  "icons": [
+    { "src": "icon-192.png", "sizes": "192x192", "type": "image/png" },
+    { "src": "icon-512.png", "sizes": "512x512", "type": "image/png" },
+    { "src": "icon-maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ]
+}
