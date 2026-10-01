@@ -349,6 +349,32 @@ def precio_desde_jsonld(html: str) -> tuple[str | None, float | None, str, bool]
 # --------------------------------------------------------------------------- #
 
 
+def _origen(url: str) -> str:
+    partes = urllib.parse.urlsplit(url)
+    return f"{partes.scheme}://{partes.netloc}"
+
+
+_DIVISAS: dict[str, str] = {}
+
+
+def shopify_divisa(cli: Cliente, dominio: str, por_defecto: str) -> str:
+    """Shopify sirve los precios en la moneda de la sesión, que depende del
+    país desde el que se pide: desde España una tienda británica puede
+    responder en euros. /cart.js dice cuál está usando de verdad."""
+    if dominio in _DIVISAS:
+        return _DIVISAS[dominio]
+    for ruta, campo in (("/cart.js", "currency"), ("/meta.json", "currency")):
+        try:
+            valor = cli.json(dominio + ruta).get(campo)
+        except Exception:
+            continue
+        if valor:
+            _DIVISAS[dominio] = valor
+            return valor
+    _DIVISAS[dominio] = por_defecto
+    return por_defecto
+
+
 def shopify_producto(
     cli: Cliente, tienda: str, url_producto: str, moneda: str = "EUR"
 ) -> list[Oferta]:
@@ -366,7 +392,8 @@ def shopify_producto(
             tienda=tienda,
             producto=limpiar(datos.get("title", "Gesture")),
             precio=barata["price"] / 100.0,  # Shopify da céntimos
-            moneda=datos.get("price_currency") or moneda,
+            moneda=datos.get("price_currency")
+            or shopify_divisa(cli, _origen(url_producto), moneda),
             enlace=url_producto,
             disponible=bool(barata.get("available")),
         )
@@ -409,6 +436,7 @@ def shopify_busqueda(
     productos = (
         datos.get("resources", {}).get("results", {}).get("products", [])
     )
+    moneda = shopify_divisa(cli, dominio, moneda)
     ofertas = []
     for p in productos:
         titulo = p.get("title", "")
@@ -668,6 +696,7 @@ def tasas_cambio(cli: Cliente) -> dict[str, float]:
             tasas[moneda] = float(datos["rates"]["EUR"])
         except Exception as exc:
             log(f"  aviso: sin tipo de cambio {moneda}->EUR ({exc})")
+    log("tipos de cambio: " + ", ".join(f"{k}={v}" for k, v in tasas.items()))
     return tasas
 
 
