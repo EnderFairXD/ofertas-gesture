@@ -68,7 +68,6 @@ CABECERAS_BASE = {
     ),
     "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
     "Accept-Language": "es-ES,es;q=0.9,en;q=0.8",
-    "Accept-Encoding": "gzip, deflate, br",
     "Upgrade-Insecure-Requests": "1",
     "Sec-Fetch-Dest": "document",
     "Sec-Fetch-Mode": "navigate",
@@ -224,7 +223,17 @@ class Cliente:
         raise RuntimeError(f"no se pudo descargar {url}: {ultimo_error}")
 
     def json(self, url: str, **kw) -> dict:
-        return self.get(url, json_esperado=True, **kw).json()
+        r = self.get(url, json_esperado=True, **kw)
+        try:
+            return r.json()
+        except ValueError as exc:
+            raise RuntimeError(
+                "la respuesta no es JSON (content-type="
+                + r.headers.get("content-type", "?")
+                + ", content-encoding="
+                + r.headers.get("content-encoding", "-")
+                + f"): {r.text[:60]!r}"
+            ) from exc
 
 
 def guardar_debug(url: str, r: requests.Response) -> None:
@@ -669,8 +678,13 @@ def main() -> int:
     estado(resultados, len(final))
     log(f"datos.json escrito con {len(final)} oferta(s) ({len(nuevas)} frescas)")
 
-    vivas = [r for r in resultados if r.ok and not r.omitida]
-    return 0 if vivas else 1
+    # Que una tienda no tenga el producto es información, no avería. Un error
+    # de red o de formato sí: el workflow debe ponerse en rojo y enterarte.
+    averiadas = [r for r in resultados if not r.ok and not r.omitida]
+    if averiadas:
+        log("fuentes con error: " + ", ".join(r.nombre for r in averiadas))
+        return 1
+    return 0
 
 
 def estado(resultados: list[Resultado], total: int, vacio: bool = False) -> None:

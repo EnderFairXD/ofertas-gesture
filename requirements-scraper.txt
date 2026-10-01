@@ -1,3 +1,4 @@
 # Lo que instala GitHub Actions para ejecutar scraper.py
 requests>=2.32
 beautifulsoup4>=4.12
+brotli>=1.1
