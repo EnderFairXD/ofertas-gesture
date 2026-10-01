@@ -1,7 +1,7 @@
 // Cachea el armazón de la app para que abra al instante y funcione sin
 // cobertura. Los precios NO se cachean aquí: van por red y, si falla, la
 // propia página tira de su copia en localStorage.
-const CACHE = "gesture-v2";
+const CACHE = "gesture-v3";
 const ARMAZON = [
   "./",
   "./index.html",
@@ -24,19 +24,39 @@ self.addEventListener("activate", (ev) => {
   );
 });
 
+function guardar(peticion, respuesta) {
+  if (respuesta.ok) {
+    const copia = respuesta.clone();
+    caches.open(CACHE).then((c) => c.put(peticion, copia));
+  }
+  return respuesta;
+}
+
 self.addEventListener("fetch", (ev) => {
   const url = new URL(ev.request.url);
   if (ev.request.method !== "GET" || url.origin !== location.origin) { return; }
+
+  // La página lleva dentro la lógica de la app, así que va por red primero:
+  // estando conectado siempre debe verse la última versión publicada. La
+  // caché es solo la red de seguridad para cuando no hay cobertura.
+  const esPagina = ev.request.mode === "navigate" ||
+                   url.pathname.endsWith("/") ||
+                   url.pathname.endsWith(".html");
+  if (esPagina) {
+    ev.respondWith(
+      fetch(ev.request)
+        .then((resp) => guardar(ev.request, resp))
+        .catch(() => caches.match(ev.request, { ignoreSearch: true })
+          .then((guardado) => guardado || caches.match("./index.html")))
+    );
+    return;
+  }
+
+  // Iconos y manifiesto: caché primero, refrescando por detrás.
   ev.respondWith(
     caches.match(ev.request, { ignoreSearch: true }).then((guardado) => {
       const red = fetch(ev.request)
-        .then((resp) => {
-          if (resp.ok) {
-            const copia = resp.clone();
-            caches.open(CACHE).then((c) => c.put(ev.request, copia));
-          }
-          return resp;
-        })
+        .then((resp) => guardar(ev.request, resp))
         .catch(() => guardado);
       return guardado || red;
     })
