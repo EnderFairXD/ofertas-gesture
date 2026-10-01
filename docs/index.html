@@ -30,6 +30,7 @@
   --aviso:      #a7661d;
   --apagado:    #8b99a6;
   --sombra:     0 1px 2px rgba(22, 32, 42, .06), 0 8px 24px -16px rgba(22, 32, 42, .25);
+  --serie:      #0b6e9c;
 
   --fuente-ui:    'Archivo', system-ui, -apple-system, 'Segoe UI', sans-serif;
   --fuente-cifra: 'IBM Plex Mono', ui-monospace, 'SF Mono', Menlo, monospace;
@@ -49,6 +50,7 @@
     --aviso:      #e2963e;
     --apagado:    #6c7d8c;
     --sombra:     0 1px 2px rgba(0, 0, 0, .4);
+    --serie:      #3f9fd4;
     color-scheme: dark;
   }
 }
@@ -64,6 +66,7 @@
   --aviso:      #e2963e;
   --apagado:    #6c7d8c;
   --sombra:     0 1px 2px rgba(0, 0, 0, .4);
+  --serie:      #3f9fd4;
   color-scheme: dark;
 }
 
@@ -203,10 +206,20 @@ img { max-width: 100%; }
   text-transform: uppercase;
   color: var(--tinta-3);
 }
-.lista { list-style: none; margin: 0; padding: 0; display: grid; gap: 10px; }
+/* minmax(0, 1fr) y no "auto": si no, la columna implícita crece hasta el
+   contenido más ancho y la fila se sale del móvil. */
+.lista {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 10px;
+}
 .fila {
   display: flex;
   flex-wrap: wrap;
+  min-width: 0;
   align-items: center;
   gap: 12px;
   padding: 14px 16px;
@@ -379,6 +392,53 @@ img { max-width: 100%; }
 }
 .boton-principal:disabled { opacity: .55; cursor: progress; }
 .resultado-lanzamiento { margin: 10px 0 0; font-size: .8rem; color: var(--tinta-2); }
+.cifras {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+  gap: 12px;
+  margin-bottom: 14px;
+}
+.cifra .etiqueta { font-size: .64rem; }
+.cifra b {
+  display: block;
+  margin-top: 2px;
+  font-size: 1.18rem;
+  font-weight: 600;
+  letter-spacing: -.01em;
+}
+.cifra span { font-size: .72rem; color: var(--tinta-3); }
+.lienzo { position: relative; }
+.lienzo svg { display: block; width: 100%; height: auto; }
+.globo {
+  position: absolute;
+  z-index: 2;
+  min-width: 128px;
+  padding: 7px 10px;
+  border: 1px solid var(--linea);
+  border-radius: 9px;
+  background: var(--superficie);
+  box-shadow: var(--sombra);
+  font-size: .74rem;
+  line-height: 1.35;
+  pointer-events: none;
+  transform: translate(-50%, -118%);
+}
+.globo b { font-family: var(--fuente-cifra); font-variant-numeric: tabular-nums; }
+.globo span { display: block; color: var(--tinta-3); }
+.tabla-datos { width: 100%; border-collapse: collapse; font-size: .78rem; }
+.tabla-datos th, .tabla-datos td {
+  padding: 5px 8px;
+  border-bottom: 1px solid var(--linea);
+  text-align: left;
+}
+.tabla-datos td.num {
+  text-align: right;
+  font-family: var(--fuente-cifra);
+  font-variant-numeric: tabular-nums;
+}
+.tabla-datos th { font-size: .68rem; text-transform: uppercase; letter-spacing: .07em; color: var(--tinta-3); }
+.envoltura-tabla { max-height: 260px; overflow: auto; }
+
 .enlaces { display: flex; flex-wrap: wrap; gap: 8px; }
 .enlaces a {
   padding: 7px 13px;
@@ -452,6 +512,22 @@ img { max-width: 100%; }
 
   <h2 class="seccion-titulo" id="titulo-lista" hidden>Todas las tiendas</h2>
   <ul class="lista" id="lista"></ul>
+
+  <section class="bloque" id="bloque-historico" hidden>
+    <h3>Evolución del precio puesto en casa</h3>
+    <div class="cifras" id="cifras"></div>
+    <div class="lienzo" id="lienzo"></div>
+    <p id="aviso-curva" class="desglose" hidden></p>
+    <details id="detalle-tabla" hidden>
+      <summary class="desglose" style="cursor:pointer">Ver los datos</summary>
+      <div class="envoltura-tabla">
+        <table class="tabla-datos">
+          <thead><tr><th>Día</th><th>Tienda</th><th style="text-align:right">Puesta en casa</th></tr></thead>
+          <tbody id="cuerpo-tabla"></tbody>
+        </table>
+      </div>
+    </details>
+  </section>
 
   <section class="bloque">
     <h3>Buscar ahora</h3>
@@ -593,7 +669,8 @@ img { max-width: 100%; }
     caja.hidden = !texto;
   }
 
-  function pintar(datos, estado, origen) {
+  function pintar(datos, estado, origen, dias) {
+    pintarHistorico(dias);
     var ofertas = (datos || []).slice().sort(function (a, b) {
       var lejosA = entregaDe(a) === "no" ? 1 : 0;
       var lejosB = entregaDe(b) === "no" ? 1 : 0;
@@ -725,6 +802,211 @@ img { max-width: 100%; }
     });
   }
 
+  // ---------------------------------------------------------------- //
+  // Histórico
+  // ---------------------------------------------------------------- //
+
+  var historico = [];
+
+  function dia(fecha) {
+    var t = fecha.split("-");
+    return new Date(+t[0], +t[1] - 1, +t[2]);
+  }
+
+  function fechaCorta(fecha) {
+    var d = dia(fecha);
+    return ("0" + d.getDate()).slice(-2) + "/" + ("0" + (d.getMonth() + 1)).slice(-2);
+  }
+
+  function pintarHistorico(dias) {
+    historico = (dias || []).filter(function (d) { return typeof d.mejor === "number"; });
+    var bloque = $("bloque-historico");
+    bloque.hidden = historico.length === 0;
+    if (!historico.length) { return; }
+
+    // --- Cifras que resumen la serie ---
+    var valores = historico.map(function (d) { return d.mejor; });
+    var minimo = historico.reduce(function (a, b) { return b.mejor < a.mejor ? b : a; });
+    var ahora = historico[historico.length - 1];
+    var ventana = historico.slice(-30);
+    var media = ventana.reduce(function (s, d) { return s + d.mejor; }, 0) / ventana.length;
+    var sobreMinimo = minimo.mejor > 0 ? ((ahora.mejor - minimo.mejor) / minimo.mejor) * 100 : 0;
+
+    $("cifras").innerHTML = [
+      tarjeta("Mínimo registrado", eur.format(minimo.mejor),
+              fechaCorta(minimo.fecha) + " · " + (minimo.tienda || "")),
+      tarjeta("Media de 30 días", eur.format(media),
+              ventana.length + (ventana.length === 1 ? " día medido" : " días medidos")),
+      tarjeta("Ahora", eur.format(ahora.mejor),
+              sobreMinimo < 0.5 ? "es el mínimo registrado"
+                                : "un " + sobreMinimo.toFixed(0) + " % por encima del mínimo")
+    ].join("");
+
+    // --- La curva necesita al menos tres días ---
+    var suficiente = historico.length >= 3;
+    $("aviso-curva").hidden = suficiente;
+    $("lienzo").hidden = !suficiente;
+    if (!suficiente) {
+      $("aviso-curva").textContent = historico.length === 1
+        ? "La curva aparece cuando haya tres días medidos. Hoy es el primero."
+        : "La curva aparece cuando haya tres días medidos. Van " + historico.length + ".";
+    } else {
+      dibujar();
+    }
+
+    // --- Vista de tabla, para no dejar nada solo en la gráfica ---
+    $("detalle-tabla").hidden = false;
+    $("cuerpo-tabla").innerHTML = historico.slice().reverse().slice(0, 60).map(function (d) {
+      return "<tr><td>" + escapar(fechaCorta(d.fecha)) + "</td><td>" +
+             escapar(d.tienda || "—") + '</td><td class="num">' +
+             escapar(eur.format(d.mejor)) + "</td></tr>";
+    }).join("");
+  }
+
+  function tarjeta(etiqueta, valor, pie) {
+    return '<div class="cifra"><p class="etiqueta">' + escapar(etiqueta) + "</p><b>" +
+           escapar(valor) + "</b><span>" + escapar(pie) + "</span></div>";
+  }
+
+  // Escalón "bonito" para los valores del eje.
+  function paso(bruto) {
+    var exp = Math.pow(10, Math.floor(Math.log(bruto) / Math.LN10));
+    var norm = bruto / exp;
+    return (norm >= 5 ? 5 : norm >= 2 ? 2 : 1) * exp;
+  }
+
+  var puntos = [];
+
+  // Se dibuja a la medida real del contenedor: así el texto del SVG mide lo
+  // que dice medir en cualquier pantalla, en vez de encogerse al escalar.
+  function dibujar() {
+    var lienzo = $("lienzo");
+    var ancho = Math.max(260, lienzo.clientWidth || 320);
+    var alto = ancho < 420 ? 170 : 210;
+    var izq = 52, der = 14, arriba = 16, abajo = 26;
+    var w = ancho - izq - der, h = alto - arriba - abajo;
+
+    var ts = historico.map(function (d) { return dia(d.fecha).getTime(); });
+    var t0 = ts[0], t1 = ts[ts.length - 1];
+    var vals = historico.map(function (d) { return d.mejor; });
+    var vMin = Math.min.apply(null, vals), vMax = Math.max.apply(null, vals);
+    if (vMax - vMin < 1) { vMin -= 10; vMax += 10; }
+    var margen = (vMax - vMin) * 0.12;
+    var yMin = vMin - margen, yMax = vMax + margen;
+
+    var px = function (t) { return izq + (t1 === t0 ? w / 2 : ((t - t0) / (t1 - t0)) * w); };
+    var py = function (v) { return arriba + h - ((v - yMin) / (yMax - yMin)) * h; };
+
+    puntos = historico.map(function (d, i) {
+      return { x: px(ts[i]), y: py(d.mejor), d: d };
+    });
+
+    // Rejilla: líneas finas, continuas y discretas.
+    var salto = paso((yMax - yMin) / 3);
+    var rejilla = "", etiquetasY = "";
+    for (var v = Math.ceil(yMin / salto) * salto; v <= yMax; v += salto) {
+      var y = py(v);
+      rejilla += '<line x1="' + izq + '" y1="' + y.toFixed(1) + '" x2="' + (izq + w) +
+                 '" y2="' + y.toFixed(1) + '" stroke="var(--linea)" stroke-width="1"></line>';
+      etiquetasY += '<text x="' + (izq - 8) + '" y="' + (y + 4).toFixed(1) +
+                    '" text-anchor="end" font-size="11" fill="var(--tinta-3)" ' +
+                    'style="font-variant-numeric:tabular-nums">' +
+                    Math.round(v).toLocaleString("es-ES") + "</text>";
+    }
+
+    var linea = puntos.map(function (p, i) {
+      return (i ? "L" : "M") + p.x.toFixed(1) + " " + p.y.toFixed(1);
+    }).join(" ");
+    var area = linea + " L" + puntos[puntos.length - 1].x.toFixed(1) + " " + (arriba + h) +
+               " L" + puntos[0].x.toFixed(1) + " " + (arriba + h) + " Z";
+
+    var ultimo = puntos[puntos.length - 1];
+    var bajo = puntos.reduce(function (a, b) { return b.d.mejor < a.d.mejor ? b : a; });
+
+    // Etiquetas directas: solo el extremo y el valor de hoy.
+    var etiquetaFin = '<text x="' + Math.min(ultimo.x, izq + w - 2) + '" y="' +
+      (ultimo.y - 12).toFixed(1) + '" text-anchor="end" font-size="12" font-weight="600" ' +
+      'fill="var(--tinta)" style="font-variant-numeric:tabular-nums">' +
+      eur.format(ultimo.d.mejor) + "</text>";
+    var etiquetaMin = (bajo !== ultimo)
+      ? '<text x="' + bajo.x.toFixed(1) + '" y="' + (bajo.y + 18).toFixed(1) +
+        '" text-anchor="middle" font-size="11" fill="var(--tinta-3)">mínimo</text>'
+      : "";
+
+    var fechasX = '<text x="' + izq + '" y="' + (alto - 6) +
+      '" font-size="11" fill="var(--tinta-3)">' + fechaCorta(historico[0].fecha) + "</text>" +
+      '<text x="' + (izq + w) + '" y="' + (alto - 6) +
+      '" text-anchor="end" font-size="11" fill="var(--tinta-3)">' +
+      fechaCorta(historico[historico.length - 1].fecha) + "</text>";
+
+    var resumen = "Evolución del precio puesto en casa entre el " +
+      fechaCorta(historico[0].fecha) + " y el " + fechaCorta(ultimo.d.fecha) +
+      ". Mínimo " + eur.format(bajo.d.mejor) + ", actual " + eur.format(ultimo.d.mejor) + ".";
+
+    lienzo.innerHTML =
+      '<svg viewBox="0 0 ' + ancho + " " + alto + '" role="img" aria-label="' +
+        escapar(resumen) + '">' +
+        rejilla + etiquetasY + fechasX +
+        '<path d="' + area + '" fill="var(--serie)" fill-opacity="0.12"></path>' +
+        '<path d="' + linea + '" fill="none" stroke="var(--serie)" stroke-width="2" ' +
+          'stroke-linejoin="round" stroke-linecap="round"></path>' +
+        (bajo !== ultimo ? '<circle cx="' + bajo.x.toFixed(1) + '" cy="' + bajo.y.toFixed(1) +
+          '" r="3.5" fill="var(--serie)" stroke="var(--superficie)" stroke-width="2"></circle>' : "") +
+        '<line id="cruceta" x1="0" y1="' + arriba + '" x2="0" y2="' + (arriba + h) +
+          '" stroke="var(--tinta-3)" stroke-width="1" opacity="0"></line>' +
+        '<circle id="foco" r="5" fill="var(--serie)" stroke="var(--superficie)" ' +
+          'stroke-width="2" opacity="0"></circle>' +
+        '<circle cx="' + ultimo.x.toFixed(1) + '" cy="' + ultimo.y.toFixed(1) +
+          '" r="4.5" fill="var(--serie)" stroke="var(--superficie)" stroke-width="2"></circle>' +
+        etiquetaMin + etiquetaFin +
+        '<rect id="captura" x="' + izq + '" y="' + arriba + '" width="' + w + '" height="' + h +
+          '" fill="transparent"></rect>' +
+      "</svg>" +
+      '<div class="globo" id="globo" hidden></div>';
+
+    var svg = lienzo.querySelector("svg");
+    var escala = function () { return ancho / svg.getBoundingClientRect().width; };
+
+    function seguir(ev) {
+      var caja = svg.getBoundingClientRect();
+      var x = (ev.clientX - caja.left) * escala();
+      var cerca = puntos.reduce(function (a, b) {
+        return Math.abs(b.x - x) < Math.abs(a.x - x) ? b : a;
+      });
+      var cruceta = lienzo.querySelector("#cruceta");
+      var foco = lienzo.querySelector("#foco");
+      cruceta.setAttribute("x1", cerca.x); cruceta.setAttribute("x2", cerca.x);
+      cruceta.setAttribute("opacity", ".45");
+      foco.setAttribute("cx", cerca.x); foco.setAttribute("cy", cerca.y);
+      foco.setAttribute("opacity", "1");
+      var globo = $("globo");
+      globo.innerHTML = "<b>" + escapar(eur.format(cerca.d.mejor)) + "</b><span>" +
+        escapar(fechaCorta(cerca.d.fecha) + " · " + (cerca.d.tienda || "")) + "</span>";
+      globo.hidden = false;
+      globo.style.left = (cerca.x / escala()) + "px";
+      globo.style.top = (cerca.y / escala()) + "px";
+    }
+
+    function soltar() {
+      lienzo.querySelector("#cruceta").setAttribute("opacity", "0");
+      lienzo.querySelector("#foco").setAttribute("opacity", "0");
+      $("globo").hidden = true;
+    }
+
+    svg.addEventListener("pointermove", seguir);
+    svg.addEventListener("pointerdown", seguir);
+    svg.addEventListener("pointerleave", soltar);
+    svg.addEventListener("pointercancel", soltar);
+  }
+
+  var temporizador;
+  window.addEventListener("resize", function () {
+    clearTimeout(temporizador);
+    temporizador = setTimeout(function () {
+      if (historico.length >= 3) { dibujar(); }
+    }, 180);
+  });
+
   function urlAcciones() {
     return "https://github.com/" + config.usuario + "/" + config.repo +
            "/actions/workflows/robot.yml";
@@ -815,15 +1097,21 @@ img { max-width: 100%; }
     $("recargar").dataset.cargando = "si";
     mostrarAviso("");
 
-    Promise.all([traer("datos.json"), traer("estado.json").catch(function () { return null; })])
+    Promise.all([
+      traer("datos.json"),
+      traer("estado.json").catch(function () { return null; }),
+      traer("historico.json").catch(function () { return []; })
+    ])
       .then(function (res) {
-        escribir(CLAVE_CACHE, { datos: res[0], estado: res[1], ts: Date.now() });
-        pintar(res[0], res[1], "red");
+        escribir(CLAVE_CACHE, {
+          datos: res[0], estado: res[1], historico: res[2], ts: Date.now()
+        });
+        pintar(res[0], res[1], "red", res[2]);
       })
       .catch(function (err) {
         var cache = leer(CLAVE_CACHE, null);
         if (cache) {
-          pintar(cache.datos, cache.estado, "cache");
+          pintar(cache.datos, cache.estado, "cache", cache.historico);
           mostrarAviso("No se pudo conectar con GitHub. Mostrando los datos guardados del " +
                        new Date(cache.ts).toLocaleString("es-ES") + ".");
         } else {
@@ -881,7 +1169,7 @@ img { max-width: 100%; }
 
   // Primer pintado instantáneo con lo guardado, luego red.
   var cache = leer(CLAVE_CACHE, null);
-  if (cache) { pintar(cache.datos, cache.estado, "cache"); }
+  if (cache) { pintar(cache.datos, cache.estado, "cache", cache.historico); }
   cargar();
 
   if ("serviceWorker" in navigator && location.protocol.indexOf("http") === 0) {

@@ -308,3 +308,42 @@ El 21 % es el IVA de importación español, que se aplica sobre el valor en
 aduana (mercancía + transporte). **No** están contados los aranceles ni los
 gastos de despacho que cobra el transportista, que en un envío desde EE. UU.
 suelen ser entre 15 y 40 € más. Es decir: la cifra es un suelo, no un techo.
+
+
+---
+
+# Historial y gráfica
+
+El robot escribe `historico.json`: un registro por día con lo más barato que
+**podías comprar de verdad** ese día, es decir en stock y con entrega en
+España, usando el precio puesto en casa. Si el robot pasa varias veces en una
+jornada se queda con el mínimo de esa jornada. Guarda 365 días; el archivo
+crece unos 100 bytes al día.
+
+```json
+{ "fecha": "2026-10-01", "mejor": 1061.05,
+  "tienda": "Office Logix Shop (reacond. EE. UU.)",
+  "tiendas": { "Office Logix Shop (reacond. EE. UU.)": 1061.05,
+               "Steelcase Oficial (ES)": 1169.0 } }
+```
+
+En la app aparece una sección nueva con tres cifras —mínimo registrado, media
+de 30 días y cuánto estás por encima del mínimo ahora— y la curva.
+
+## Decisiones de la gráfica
+
+- **La curva sale a partir del tercer día.** Con uno o dos puntos una línea no
+  dice nada, así que hasta entonces se ven solo las cifras y un aviso de
+  cuántos días llevan medidos.
+- **El SVG se dibuja a la medida real del contenedor**, no con un `viewBox`
+  fijo que luego se escala: así el texto de los ejes mide once píxeles de
+  verdad también en el móvil. Se redibuja al cambiar el tamaño de la ventana.
+- **Color validado, no elegido a ojo.** El azul de la interfaz suspendía el
+  umbral de saturación para una línea de datos, así que la serie usa `#0b6e9c`
+  en claro y `#3f9fd4` en oscuro: ambos pasan banda de luminosidad, suelo de
+  saturación y contraste contra su superficie.
+- **Etiquetas selectivas**: solo el valor de hoy y el mínimo. El resto lo
+  cuentan el eje, el globo al pasar el dedo o el ratón, y la tabla de
+  «Ver los datos», que está ahí para que ningún dato viva solo en la gráfica.
+- Rejilla de línea fina y continua, relleno al 12 %, línea de 2 px y puntos
+  con anillo del color del fondo.

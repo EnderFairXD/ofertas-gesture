@@ -46,11 +46,13 @@ from bs4 import BeautifulSoup
 RAIZ = Path(__file__).resolve().parent
 ARCHIVO_DATOS = RAIZ / "datos.json"
 ARCHIVO_ESTADO = RAIZ / "estado.json"
+ARCHIVO_HISTORICO = RAIZ / "historico.json"
 DIR_DEBUG = RAIZ / "debug"
 
 TIMEOUT = 25
 REINTENTOS = 3
 DIAS_CADUCIDAD = int(os.getenv("DIAS_CADUCIDAD", "14"))
+DIAS_HISTORICO = 365
 
 # El producto que buscamos. Evita falsos positivos: sin esto, raspar una página
 # de resultados devuelve el precio de la primera silla cualquiera que salga.
@@ -900,6 +902,74 @@ def recortar(ofertas: list[Oferta]) -> list[Oferta]:
     return sorted(unicas.values(), key=orden)[:MAX_POR_TIENDA]
 
 
+def coste(oferta: dict) -> float | None:
+    """Lo que cuesta ponerla en casa; si no hay tarifa de envío, el precio a
+    secas. Misma regla que usa la app para ordenar."""
+    for campo in ("TotalEUR", "PrecioEUR", "Precio"):
+        if isinstance(oferta.get(campo), (int, float)):
+            return float(oferta[campo])
+    return None
+
+
+def actualizar_historico(publicadas: list[dict]) -> None:
+    """Un registro por día con lo más barato que podías comprar de verdad:
+    en stock y con entrega en España. Si el robot pasa varias veces en el
+    mismo día se queda con el mínimo de la jornada."""
+    comprables = [
+        d for d in publicadas
+        if d.get("Estado") == "ok" and d.get("Entrega") != ENTREGA_NO
+        and coste(d) is not None
+    ]
+    por_tienda: dict[str, float] = {}
+    for d in comprables:
+        valor = coste(d)
+        tienda = d["Tienda"]
+        if valor is not None and valor < por_tienda.get(tienda, float("inf")):
+            por_tienda[tienda] = round(valor, 2)
+
+    mejor = min(comprables, key=lambda d: coste(d)) if comprables else None
+    hoy = ahora().strftime("%Y-%m-%d")
+    registro = {
+        "fecha": hoy,
+        "mejor": round(coste(mejor), 2) if mejor else None,
+        "tienda": mejor["Tienda"] if mejor else None,
+        "tiendas": por_tienda,
+    }
+
+    try:
+        dias = json.loads(ARCHIVO_HISTORICO.read_text(encoding="utf-8"))
+        dias = dias if isinstance(dias, list) else []
+    except (FileNotFoundError, json.JSONDecodeError):
+        dias = []
+
+    previo = next((d for d in dias if d.get("fecha") == hoy), None)
+    if previo is None:
+        dias.append(registro)
+    else:
+        # Varias pasadas en el mismo día: nos quedamos con lo más barato visto.
+        anterior = previo.get("mejor")
+        if registro["mejor"] is not None and (
+            anterior is None or registro["mejor"] < anterior
+        ):
+            previo["mejor"] = registro["mejor"]
+            previo["tienda"] = registro["tienda"]
+        fusion = dict(previo.get("tiendas") or {})
+        for tienda, valor in por_tienda.items():
+            if valor < fusion.get(tienda, float("inf")):
+                fusion[tienda] = valor
+        previo["tiendas"] = fusion
+
+    dias.sort(key=lambda d: d.get("fecha", ""))
+    dias = dias[-DIAS_HISTORICO:]
+    ARCHIVO_HISTORICO.write_text(
+        json.dumps(dias, ensure_ascii=False, indent=2) + "\n", encoding="utf-8"
+    )
+    if registro["mejor"] is not None:
+        log(f"histórico: {hoy} -> {registro['mejor']:.2f} EUR ({registro['tienda']})")
+    else:
+        log(f"histórico: {hoy} -> sin nada comprable")
+
+
 def main() -> int:
     cli = Cliente()
     if cli.clave_scraperapi:
@@ -950,6 +1020,7 @@ def main() -> int:
     ARCHIVO_DATOS.write_text(
         json.dumps(final, ensure_ascii=False, indent=2) + "\n", encoding="utf-8"
     )
+    actualizar_historico(final)
     estado(resultados, len(final))
     log(f"datos.json escrito con {len(final)} oferta(s) ({len(nuevas)} frescas)")
 
