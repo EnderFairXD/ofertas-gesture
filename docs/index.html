@@ -518,6 +518,7 @@ img { max-width: 100%; }
     <div class="cifras" id="cifras"></div>
     <div class="lienzo" id="lienzo"></div>
     <p id="aviso-curva" class="desglose" hidden></p>
+    <p id="umbral" class="desglose" hidden></p>
     <details id="detalle-tabla" hidden>
       <summary class="desglose" style="cursor:pointer">Ver los datos</summary>
       <div class="envoltura-tabla">
@@ -670,6 +671,7 @@ img { max-width: 100%; }
   }
 
   function pintar(datos, estado, origen, dias) {
+    estadoActual = estado;
     pintarHistorico(dias);
     var ofertas = (datos || []).slice().sort(function (a, b) {
       var lejosA = entregaDe(a) === "no" ? 1 : 0;
@@ -807,6 +809,7 @@ img { max-width: 100%; }
   // ---------------------------------------------------------------- //
 
   var historico = [];
+  var estadoActual = null;
 
   function dia(fecha) {
     var t = fecha.split("-");
@@ -855,6 +858,15 @@ img { max-width: 100%; }
     }
 
     // --- Vista de tabla, para no dejar nada solo en la gráfica ---
+    var umbral = $("umbral");
+    if (estadoActual && typeof estadoActual.umbral_aviso === "number") {
+      umbral.textContent = "Te avisaré en cuanto baje de " +
+        eur.format(estadoActual.umbral_aviso) + " puesta en casa.";
+      umbral.hidden = false;
+    } else {
+      umbral.hidden = true;
+    }
+
     $("detalle-tabla").hidden = false;
     $("cuerpo-tabla").innerHTML = historico.slice().reverse().slice(0, 60).map(function (d) {
       return "<tr><td>" + escapar(fechaCorta(d.fecha)) + "</td><td>" +

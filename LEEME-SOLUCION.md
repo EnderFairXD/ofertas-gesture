@@ -347,3 +347,59 @@ de 30 días y cuánto estás por encima del mínimo ahora— y la curva.
   «Ver los datos», que está ahí para que ningún dato viva solo en la gráfica.
 - Rejilla de línea fina y continua, relleno al 12 %, línea de 2 px y puntos
   con anillo del color del fondo.
+
+
+---
+
+# Aviso cuando baje de 500 €
+
+El robot compara el umbral contra **lo más barato que puedes comprar de
+verdad**: en stock, con entrega en España y al precio puesto en casa (envío e
+IVA de importación incluidos). No contra el precio de escaparate.
+
+## Canales
+
+- **Incidencia en GitHub** — funciona desde ya, sin configurar nada. El robot
+  abre una incidencia en el repositorio y GitHub te la manda por correo y por
+  su app móvil. Usa el `GITHUB_TOKEN` que el propio workflow ya tiene.
+- **Telegram** — opcional, dos minutos de preparación:
+  1. En Telegram, habla con **@BotFather** y manda `/newbot`. Te da un token.
+  2. Escríbele algo a tu bot recién creado.
+  3. Abre `https://api.telegram.org/bot<TU_TOKEN>/getUpdates` y copia el
+     `chat.id` que aparece.
+  4. En el repo, *Settings → Secrets and variables → Actions*, crea
+     `TELEGRAM_TOKEN` y `TELEGRAM_CHAT_ID`.
+
+  Si no los pones, ese canal simplemente no se usa.
+
+## Cuándo avisa y cuándo se calla
+
+Guarda en `avisos.json` el último precio avisado, con estas reglas:
+
+| Situación | Qué hace |
+|---|---|
+| Baja del umbral por primera vez | **avisa** |
+| Sigue por debajo, pero igual o más caro que el último aviso | calla |
+| Baja todavía más | **avisa** |
+| Vuelve a subir por encima del umbral | calla y se rearma |
+| Vuelve a bajar después de rearmarse | **avisa** |
+
+Comprobado con esa secuencia exacta: tres avisos en los tres momentos
+correctos, cada uno por los dos canales.
+
+## Cambiar el umbral
+
+Está en `.github/workflows/robot.yml`, variable `UMBRAL_AVISO`. La app enseña
+el valor configurado debajo de la gráfica, leyéndolo de `estado.json`.
+
+## Una advertencia sobre los 500 €
+
+Con las tiendas actuales ese umbral no va a saltar: lo más barato entregable
+está en 1.062 € puesta en casa, y las de 480-560 £ son precisamente las que no
+envían a España. Por debajo de 500 € puestos en casa solo van a aparecer
+anuncios de particulares, que es justo lo que entra por **eBay** en cuanto
+pongas sus credenciales, o lo que veas a mano en Wallapop.
+
+Si el envío no se puede calcular (la tienda no da tarifa), el aviso se dispara
+con el precio a secas y lo dice en el propio mensaje, para que no te lleves la
+sorpresa en el checkout.

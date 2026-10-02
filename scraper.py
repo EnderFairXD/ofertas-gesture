@@ -47,12 +47,18 @@ RAIZ = Path(__file__).resolve().parent
 ARCHIVO_DATOS = RAIZ / "datos.json"
 ARCHIVO_ESTADO = RAIZ / "estado.json"
 ARCHIVO_HISTORICO = RAIZ / "historico.json"
+ARCHIVO_AVISOS = RAIZ / "avisos.json"
 DIR_DEBUG = RAIZ / "debug"
 
 TIMEOUT = 25
 REINTENTOS = 3
 DIAS_CADUCIDAD = int(os.getenv("DIAS_CADUCIDAD", "14"))
 DIAS_HISTORICO = 365
+
+# Si lo más barato que puedes comprar de verdad baja de aquí, el robot avisa.
+UMBRAL_AVISO = float(os.getenv("UMBRAL_AVISO", "500"))
+# Con esto puesto a 1 se escribe el aviso en el log pero no se manda a nadie.
+AVISO_SIMULADO = os.getenv("AVISO_SIMULADO", "") == "1"
 
 # El producto que buscamos. Evita falsos positivos: sin esto, raspar una página
 # de resultados devuelve el precio de la primera silla cualquiera que salga.
@@ -970,6 +976,151 @@ def actualizar_historico(publicadas: list[dict]) -> None:
         log(f"histórico: {hoy} -> sin nada comprable")
 
 
+def euros(valor: float) -> str:
+    """1234.5 -> "1.234,50 €", como se escribe en España."""
+    return f"{valor:,.2f} €".replace(",", "@").replace(".", ",").replace("@", ".")
+
+
+def mensaje_aviso(oferta: dict, valor: float) -> tuple[str, str]:
+    """Título y cuerpo del aviso, en el mismo texto para los dos canales."""
+    titulo = f"La Gesture ha bajado a {euros(valor)}"
+    if oferta.get("EnvioEUR") is None:
+        cuentas = (
+            f"{euros(oferta['PrecioEUR'])} de precio. "
+            "La tienda no da tarifa de envío, así que el transporte NO está contado."
+        )
+    else:
+        partes = [f"{euros(oferta['PrecioEUR'])} de precio"]
+        partes.append(
+            "envío gratis" if oferta["EnvioEUR"] == 0 else f"{euros(oferta['EnvioEUR'])} de envío"
+        )
+        if oferta.get("Entrega") == ENTREGA_IMPORTA:
+            partes.append("21 % de IVA de importación")
+        cuentas = " + ".join(partes)
+
+    cuerpo = (
+        f"**{euros(valor)}** puesta en casa en **{oferta['Tienda']}**.\n\n"
+        f"{oferta.get('Producto', '')}\n\n"
+        f"Cuentas: {cuentas}\n\n"
+        f"{oferta.get('Enlace', '')}\n\n"
+        f"_Aviso configurado en {euros(UMBRAL_AVISO)}. "
+        "No incluye aranceles ni gastos de despacho del transportista._"
+    )
+    return titulo, cuerpo
+
+
+def enviar_telegram(cli: Cliente, titulo: str, cuerpo: str) -> bool:
+    ficha = os.getenv("TELEGRAM_TOKEN", "").strip()
+    chat = os.getenv("TELEGRAM_CHAT_ID", "").strip()
+    if not (ficha and chat):
+        return False
+    r = cli.sesion.post(
+        f"https://api.telegram.org/bot{ficha}/sendMessage",
+        json={
+            "chat_id": chat,
+            "text": f"🪑 *{titulo}*\n\n{cuerpo}",
+            "parse_mode": "Markdown",
+            "disable_web_page_preview": False,
+        },
+        timeout=TIMEOUT,
+    )
+    if r.status_code >= 400:
+        log(f"  Telegram rechazó el aviso: HTTP {r.status_code} {r.text[:120]}")
+        return False
+    log("  aviso enviado por Telegram")
+    return True
+
+
+def abrir_incidencia(cli: Cliente, titulo: str, cuerpo: str) -> bool:
+    """Abre una incidencia en el propio repositorio. GitHub la manda por correo
+    y por su app móvil, así que no hace falta configurar nada más."""
+    ficha = os.getenv("GITHUB_TOKEN", "").strip()
+    repo = os.getenv("GITHUB_REPOSITORY", "").strip()
+    if not (ficha and repo):
+        return False
+    r = cli.sesion.post(
+        f"https://api.github.com/repos/{repo}/issues",
+        headers={
+            "Authorization": f"Bearer {ficha}",
+            "Accept": "application/vnd.github+json",
+            "X-GitHub-Api-Version": "2022-11-28",
+        },
+        json={"title": f"🪑 {titulo}", "body": cuerpo},
+        timeout=TIMEOUT,
+    )
+    if r.status_code >= 400:
+        log(f"  GitHub rechazó la incidencia: HTTP {r.status_code} {r.text[:160]}")
+        return False
+    log(f"  aviso publicado como incidencia {r.json().get('html_url', '')}")
+    return True
+
+
+def avisar(cli: Cliente, publicadas: list[dict]) -> dict:
+    """Avisa cuando lo más barato comprable de verdad baja del umbral.
+
+    No repite: solo vuelve a avisar si el precio baja todavía más. Si sube por
+    encima del umbral, el aviso se rearma para la próxima vez."""
+    try:
+        memoria = json.loads(ARCHIVO_AVISOS.read_text(encoding="utf-8"))
+    except (FileNotFoundError, json.JSONDecodeError):
+        memoria = {}
+
+    candidatas = [
+        d for d in publicadas
+        if d.get("Estado") == "ok" and d.get("Entrega") != ENTREGA_NO
+        and coste(d) is not None
+    ]
+    if not candidatas:
+        return memoria
+
+    mejor = min(candidatas, key=lambda d: coste(d))
+    valor = coste(mejor)
+    ultimo = memoria.get("ultimo_avisado")
+
+    if valor >= UMBRAL_AVISO:
+        if ultimo is not None:
+            log(f"aviso rearmado: lo más barato vuelve a estar en {valor:.2f} €")
+            memoria = {"ultimo_avisado": None, "rearmado": ahora().isoformat(timespec="seconds")}
+            ARCHIVO_AVISOS.write_text(
+                json.dumps(memoria, ensure_ascii=False, indent=2) + "\n", encoding="utf-8"
+            )
+        return memoria
+
+    if ultimo is not None and valor >= ultimo:
+        log(f"por debajo del umbral ({valor:.2f} €) pero ya avisado a {ultimo:.2f} €")
+        return memoria
+
+    titulo, cuerpo = mensaje_aviso(mejor, valor)
+    if AVISO_SIMULADO:
+        log("AVISO SIMULADO, no se manda a nadie:")
+        log(f"  titulo: {titulo}")
+        for linea in cuerpo.split("\n"):
+            if linea.strip():
+                log(f"  | {linea}")
+        return memoria
+
+    canales = []
+    if enviar_telegram(cli, titulo, cuerpo):
+        canales.append("telegram")
+    if abrir_incidencia(cli, titulo, cuerpo):
+        canales.append("incidencia")
+    if not canales:
+        log("hay oferta por debajo del umbral pero no hay ningún canal de aviso configurado")
+        return memoria
+
+    memoria = {
+        "ultimo_avisado": round(valor, 2),
+        "fecha": ahora().isoformat(timespec="seconds"),
+        "tienda": mejor["Tienda"],
+        "enlace": mejor.get("Enlace"),
+        "canales": canales,
+    }
+    ARCHIVO_AVISOS.write_text(
+        json.dumps(memoria, ensure_ascii=False, indent=2) + "\n", encoding="utf-8"
+    )
+    return memoria
+
+
 def main() -> int:
     cli = Cliente()
     if cli.clave_scraperapi:
@@ -1021,6 +1172,7 @@ def main() -> int:
         json.dumps(final, ensure_ascii=False, indent=2) + "\n", encoding="utf-8"
     )
     actualizar_historico(final)
+    avisar(cli, final)
     estado(resultados, len(final))
     log(f"datos.json escrito con {len(final)} oferta(s) ({len(nuevas)} frescas)")
 
@@ -1041,6 +1193,7 @@ def estado(resultados: list[Resultado], total: int, vacio: bool = False) -> None
                 "ofertas_publicadas": total,
                 "conservado_sin_cambios": vacio,
                 "a_mano": [{"nombre": n, "url": u} for n, u in A_MANO],
+                "umbral_aviso": UMBRAL_AVISO,
                 "fuentes": [
                     {
                         "nombre": r.nombre,
