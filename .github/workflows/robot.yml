@@ -40,7 +40,7 @@ jobs:
           EBAY_MARKETPLACE: EBAY_ES
           SCRAPERAPI_KEY: ${{ secrets.SCRAPERAPI_KEY }}   # opcional
           # Avisos cuando el precio puesto en casa baje del umbral.
-          UMBRAL_AVISO: '500'
+          UMBRAL_AVISO: '750'
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           TELEGRAM_TOKEN: ${{ secrets.TELEGRAM_TOKEN }}        # opcional
           TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}    # opcional

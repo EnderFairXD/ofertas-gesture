@@ -351,7 +351,7 @@ de 30 días y cuánto estás por encima del mínimo ahora— y la curva.
 
 ---
 
-# Aviso cuando baje de 500 €
+# Aviso cuando baje de 750 €
 
 El robot compara el umbral contra **lo más barato que puedes comprar de
 verdad**: en stock, con entrega en España y al precio puesto en casa (envío e
@@ -392,14 +392,26 @@ correctos, cada uno por los dos canales.
 Está en `.github/workflows/robot.yml`, variable `UMBRAL_AVISO`. La app enseña
 el valor configurado debajo de la gráfica, leyéndolo de `estado.json`.
 
-## Una advertencia sobre los 500 €
+## Qué cuenta para el aviso
 
-Con las tiendas actuales ese umbral no va a saltar: lo más barato entregable
-está en 1.062 € puesta en casa, y las de 480-560 £ son precisamente las que no
-envían a España. Por debajo de 500 € puestos en casa solo van a aparecer
-anuncios de particulares, que es justo lo que entra por **eBay** en cuanto
-pongas sus credenciales, o lo que veas a mano en Wallapop.
+Solo lo que puedes comprar y además te llega:
 
-Si el envío no se puede calcular (la tienda no da tarifa), el aviso se dispara
-con el precio a secas y lo dice en el propio mensaje, para que no te lleves la
-sorpresa en el checkout.
+| Caso | ¿Avisa? |
+|---|---|
+| Tienda española, con o sin tarifa de envío | sí |
+| Desde la UE | sí |
+| De fuera de la UE **con** tarifa real de envío | sí (el total ya lleva envío e IVA) |
+| De fuera de la UE **sin** tarifa de envío | **no** |
+| Solo entrega local (Londres M25, Reino Unido peninsular) | **no** |
+| Agotada | **no** |
+
+La cuarta fila es la importante. Office Logix anuncia 560 € de escaparate y
+cuesta 1.062 € puesta en casa: sin la tarifa real de envío, avisar de esos
+560 € sería mentir. Si la tienda es española y no da tarifa, sí se avisa con
+el precio a secas, pero el mensaje lo dice.
+
+## Por qué 750 €
+
+Las Gesture de particular que aparecen en Wallapop rondan los 710-800 €, así
+que 750 € puestos en casa es el filo de lo que es una buena compra aquí. Con
+500 € el aviso no habría saltado nunca.

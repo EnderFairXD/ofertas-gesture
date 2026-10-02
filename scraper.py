@@ -131,6 +131,12 @@ ENTREGA_UE = "ue"
 ENTREGA_IMPORTA = "importa"
 ENTREGA_NO = "no"
 
+DESCRIPCION_ENTREGA = {
+    ENTREGA_ES: "tienda española",
+    ENTREGA_UE: "desde la Unión Europea, sin aduanas",
+    ENTREGA_IMPORTA: "de fuera de la UE, con importación ya incluida en el total",
+}
+
 PAISES_UE = {
     "AT", "BE", "BG", "HR", "CY", "CZ", "DK", "EE", "FI", "FR", "DE", "GR",
     "HU", "IE", "IT", "LV", "LT", "LU", "MT", "NL", "PL", "PT", "RO", "SK",
@@ -1000,6 +1006,7 @@ def mensaje_aviso(oferta: dict, valor: float) -> tuple[str, str]:
 
     cuerpo = (
         f"**{euros(valor)}** puesta en casa en **{oferta['Tienda']}**.\n\n"
+        f"Entrega: {DESCRIPCION_ENTREGA.get(oferta.get('Entrega'), '?')}\n\n"
         f"{oferta.get('Producto', '')}\n\n"
         f"Cuentas: {cuentas}\n\n"
         f"{oferta.get('Enlace', '')}\n\n"
@@ -1055,6 +1062,22 @@ def abrir_incidencia(cli: Cliente, titulo: str, cuerpo: str) -> bool:
     return True
 
 
+def apto_para_aviso(oferta: dict) -> bool:
+    """Qué cuenta para el aviso: algo que puedas comprar y que te llegue.
+
+    Se exige tarifa de envío conocida a lo que viene de fuera de la UE. Sin
+    ella solo tendríamos el precio de escaparate, y ya hemos visto que el
+    transporte desde EE. UU. puede ser de 316 €: avisar de una "ganga" de
+    560 € que en realidad cuesta 1.062 € puestos en casa sería mentir."""
+    if oferta.get("Estado") != "ok":
+        return False
+    if oferta.get("Entrega") == ENTREGA_NO:
+        return False
+    if oferta.get("Entrega") == ENTREGA_IMPORTA and oferta.get("TotalEUR") is None:
+        return False
+    return coste(oferta) is not None
+
+
 def avisar(cli: Cliente, publicadas: list[dict]) -> dict:
     """Avisa cuando lo más barato comprable de verdad baja del umbral.
 
@@ -1065,11 +1088,7 @@ def avisar(cli: Cliente, publicadas: list[dict]) -> dict:
     except (FileNotFoundError, json.JSONDecodeError):
         memoria = {}
 
-    candidatas = [
-        d for d in publicadas
-        if d.get("Estado") == "ok" and d.get("Entrega") != ENTREGA_NO
-        and coste(d) is not None
-    ]
+    candidatas = [d for d in publicadas if apto_para_aviso(d)]
     if not candidatas:
         return memoria
 
