@@ -1,7 +1,7 @@
 // Cachea el armazón de la app para que abra al instante y funcione sin
 // cobertura. Los precios NO se cachean aquí: van por red y, si falla, la
 // propia página tira de su copia en localStorage.
-const CACHE = "gesture-v10";
+const CACHE = "gesture-v11";
 const ARMAZON = [
   "./",
   "./index.html",

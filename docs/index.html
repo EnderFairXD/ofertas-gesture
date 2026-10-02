@@ -841,8 +841,13 @@ img { max-width: 100%; }
       tarjeta("Media de 30 días", eur.format(media),
               ventana.length + (ventana.length === 1 ? " día medido" : " días medidos")),
       tarjeta("Ahora", eur.format(ahora.mejor),
-              sobreMinimo < 0.5 ? "es el mínimo registrado"
-                                : "un " + sobreMinimo.toFixed(0) + " % por encima del mínimo")
+              // "Es el mínimo" solo si de verdad lo es: decirlo por estar cerca
+              // contradice a la cifra de al lado.
+              ahora.mejor <= minimo.mejor + 0.005
+                ? "es el mínimo registrado"
+                : "un " + (sobreMinimo < 10 ? sobreMinimo.toFixed(1).replace(".", ",")
+                                            : sobreMinimo.toFixed(0)) +
+                  " % por encima del mínimo")
     ].join("");
 
     // --- La curva necesita al menos tres días ---
@@ -861,7 +866,7 @@ img { max-width: 100%; }
     var umbral = $("umbral");
     if (estadoActual && typeof estadoActual.umbral_aviso === "number") {
       umbral.textContent = "Te avisaré en cuanto baje de " +
-        eur.format(estadoActual.umbral_aviso) + " puesta en casa.";
+        sinDecimales.format(estadoActual.umbral_aviso) + " puesta en casa.";
       umbral.hidden = false;
     } else {
       umbral.hidden = true;
