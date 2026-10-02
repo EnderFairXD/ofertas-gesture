@@ -1,5 +1,5 @@
 {
-  "ejecutado": "2026-10-02T11:17:18+00:00",
+  "ejecutado": "2026-10-02T11:20:41+00:00",
   "ofertas_publicadas": 7,
   "conservado_sin_cambios": false,
   "a_mano": [
@@ -20,7 +20,7 @@
       "url": "https://www.pccomponentes.com/buscar/?query=steelcase%20gesture"
     }
   ],
-  "umbral_aviso": 1200.0,
+  "umbral_aviso": 500.0,
   "fuentes": [
     {
       "nombre": "Steelcase Oficial (ES)",
