@@ -12,7 +12,7 @@
     "Disponible": true,
     "Entrega": "importa",
     "Estado": "ok",
-    "Última actualización": "2026-10-02T11:27:23+00:00"
+    "Última actualización": "2026-10-02T11:44:00+00:00"
   },
   {
     "Tienda": "Steelcase Oficial (ES)",
@@ -27,7 +27,7 @@
     "Disponible": true,
     "Entrega": "es",
     "Estado": "ok",
-    "Última actualización": "2026-10-02T11:27:23+00:00"
+    "Última actualización": "2026-10-02T11:44:00+00:00"
   },
   {
     "Tienda": "The Office Crowd (reacond. ES)",
@@ -42,7 +42,7 @@
     "Disponible": false,
     "Entrega": "importa",
     "Estado": "sin stock",
-    "Última actualización": "2026-10-02T11:27:23+00:00"
+    "Última actualización": "2026-10-02T11:44:00+00:00"
   },
   {
     "Tienda": "Chair Smith (reacond. UK)",
@@ -57,7 +57,7 @@
     "Disponible": true,
     "Entrega": "no",
     "Estado": "ok",
-    "Última actualización": "2026-10-02T11:27:23+00:00"
+    "Última actualización": "2026-10-02T11:44:00+00:00"
   },
   {
     "Tienda": "Chair Smith (reacond. UK)",
@@ -72,7 +72,7 @@
     "Disponible": true,
     "Entrega": "no",
     "Estado": "ok",
-    "Última actualización": "2026-10-02T11:27:23+00:00"
+    "Última actualización": "2026-10-02T11:44:00+00:00"
   },
   {
     "Tienda": "Chair Smith (reacond. UK)",
@@ -87,7 +87,7 @@
     "Disponible": false,
     "Entrega": "no",
     "Estado": "sin stock",
-    "Última actualización": "2026-10-02T11:27:23+00:00"
+    "Última actualización": "2026-10-02T11:44:00+00:00"
   },
   {
     "Tienda": "Barkham Office Furniture (UK)",
@@ -102,6 +102,6 @@
     "Disponible": false,
     "Entrega": "no",
     "Estado": "sin stock",
-    "Última actualización": "2026-10-02T11:27:23+00:00"
+    "Última actualización": "2026-10-02T11:44:00+00:00"
   }
 ]
