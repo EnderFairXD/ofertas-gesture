@@ -2,17 +2,17 @@
   {
     "Tienda": "Office Logix Shop (reacond. EE. UU.)",
     "Producto": "Steelcase Gesture Chair",
-    "Precio": 560.95,
+    "Precio": 559.95,
     "Moneda": "EUR",
-    "PrecioEUR": 560.95,
-    "Envio": 316.95,
-    "EnvioEUR": 316.95,
-    "TotalEUR": 1062.26,
+    "PrecioEUR": 559.95,
+    "Envio": 315.95,
+    "EnvioEUR": 315.95,
+    "TotalEUR": 1059.84,
     "Enlace": "https://www.officelogixshop.com/products/steelcase-gesture-platinum-frame-desk-chair",
     "Disponible": true,
     "Entrega": "importa",
     "Estado": "ok",
-    "Última actualización": "2026-10-02T11:44:00+00:00"
+    "Última actualización": "2026-10-03T10:57:33+00:00"
   },
   {
     "Tienda": "Steelcase Oficial (ES)",
@@ -27,14 +27,14 @@
     "Disponible": true,
     "Entrega": "es",
     "Estado": "ok",
-    "Última actualización": "2026-10-02T11:44:00+00:00"
+    "Última actualización": "2026-10-03T10:57:33+00:00"
   },
   {
     "Tienda": "The Office Crowd (reacond. ES)",
     "Producto": "Steelcase Silla de oficina ergonómica Gesture - Tela gris - Reacondicionada",
-    "Precio": 784.95,
+    "Precio": 785.95,
     "Moneda": "EUR",
-    "PrecioEUR": 784.95,
+    "PrecioEUR": 785.95,
     "Envio": null,
     "EnvioEUR": null,
     "TotalEUR": null,
@@ -42,14 +42,14 @@
     "Disponible": false,
     "Entrega": "importa",
     "Estado": "sin stock",
-    "Última actualización": "2026-10-02T11:44:00+00:00"
+    "Última actualización": "2026-10-03T10:57:33+00:00"
   },
   {
     "Tienda": "Chair Smith (reacond. UK)",
     "Producto": "Refurbished Steelcase Gesture Task chair",
     "Precio": 444.0,
     "Moneda": "GBP",
-    "PrecioEUR": 520.06,
+    "PrecioEUR": 522.14,
     "Envio": null,
     "EnvioEUR": null,
     "TotalEUR": null,
@@ -57,14 +57,14 @@
     "Disponible": true,
     "Entrega": "no",
     "Estado": "ok",
-    "Última actualización": "2026-10-02T11:44:00+00:00"
+    "Última actualización": "2026-10-03T10:57:33+00:00"
   },
   {
     "Tienda": "Chair Smith (reacond. UK)",
     "Producto": "Refurbished Steelcase Gesture Task chair",
     "Precio": 480.0,
     "Moneda": "GBP",
-    "PrecioEUR": 562.22,
+    "PrecioEUR": 564.48,
     "Envio": null,
     "EnvioEUR": null,
     "TotalEUR": null,
@@ -72,14 +72,14 @@
     "Disponible": true,
     "Entrega": "no",
     "Estado": "ok",
-    "Última actualización": "2026-10-02T11:44:00+00:00"
+    "Última actualización": "2026-10-03T10:57:33+00:00"
   },
   {
     "Tienda": "Chair Smith (reacond. UK)",
     "Producto": "Steelcase Gesture Task chair",
     "Precio": 420.0,
     "Moneda": "GBP",
-    "PrecioEUR": 491.95,
+    "PrecioEUR": 493.92,
     "Envio": null,
     "EnvioEUR": null,
     "TotalEUR": null,
@@ -87,14 +87,14 @@
     "Disponible": false,
     "Entrega": "no",
     "Estado": "sin stock",
-    "Última actualización": "2026-10-02T11:44:00+00:00"
+    "Última actualización": "2026-10-03T10:57:33+00:00"
   },
   {
     "Tienda": "Barkham Office Furniture (UK)",
     "Producto": "Steelcase Gesture Chair",
     "Precio": 534.0,
     "Moneda": "GBP",
-    "PrecioEUR": 625.47,
+    "PrecioEUR": 627.98,
     "Envio": null,
     "EnvioEUR": null,
     "TotalEUR": null,
@@ -102,6 +102,6 @@
     "Disponible": false,
     "Entrega": "no",
     "Estado": "sin stock",
-    "Última actualización": "2026-10-02T11:44:00+00:00"
+    "Última actualización": "2026-10-03T10:57:33+00:00"
   }
 ]
