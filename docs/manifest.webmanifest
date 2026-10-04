@@ -1,7 +1,7 @@
 {
-  "name": "Monitor Gesture",
-  "short_name": "Gesture",
-  "description": "Precio de la Steelcase Gesture en varias tiendas, actualizado cada mañana.",
+  "name": "Monitor de precios",
+  "short_name": "Precios",
+  "description": "Precios de los productos que sigues, en varias tiendas, actualizados cada mañana.",
   "start_url": "./",
   "scope": "./",
   "display": "standalone",
