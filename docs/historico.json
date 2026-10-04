@@ -1,0 +1,43 @@
+{
+  "gesture": [
+    {
+      "fecha": "2026-10-01",
+      "mejor": 1061.05,
+      "tienda": "Office Logix Shop (reacond. EE. UU.)",
+      "tiendas": {
+        "Office Logix Shop (reacond. EE. UU.)": 1061.05,
+        "Steelcase Oficial (ES)": 1169.0
+      }
+    },
+    {
+      "fecha": "2026-10-02",
+      "mejor": 1062.26,
+      "tienda": "Office Logix Shop (reacond. EE. UU.)",
+      "tiendas": {
+        "Office Logix Shop (reacond. EE. UU.)": 1062.26,
+        "Steelcase Oficial (ES)": 1169.0
+      }
+    },
+    {
+      "fecha": "2026-10-04",
+      "mejor": 1059.84,
+      "tienda": "Office Logix Shop (reacond. EE. UU.)",
+      "tiendas": {
+        "Office Logix Shop (reacond. EE. UU.)": 1059.84,
+        "Steelcase Oficial (ES)": 1169.0
+      }
+    }
+  ],
+  "tygr": [
+    {
+      "fecha": "2026-10-04",
+      "mejor": 109.0,
+      "tienda": "Beyerdynamic B-Stock (UE)",
+      "tiendas": {
+        "Beyerdynamic B-Stock (UE)": 109.0,
+        "Thomann (DE)": 158.0,
+        "Beyerdynamic oficial (UE)": 159.0
+      }
+    }
+  ]
+}

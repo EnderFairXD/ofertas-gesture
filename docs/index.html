@@ -869,11 +869,29 @@ img { max-width: 100%; }
     });
   }
 
-  function traer(archivo) {
-    return fetch(urlCruda(archivo), { cache: "no-store" }).then(function (r) {
-      if (!r.ok) { throw new Error(archivo + ": HTTP " + r.status); }
+  function pedir(url) {
+    return fetch(url, { cache: "no-store" }).then(function (r) {
+      if (!r.ok) { throw new Error("HTTP " + r.status); }
       return r.json();
     });
+  }
+
+  // El robot deja una copia de los datos junto a la propia app, así que se
+  // piden de aquí mismo: raw.githubusercontent cachea cinco minutos y llega a
+  // servir versiones distintas a la vez. Queda de respaldo, y es la única vía
+  // cuando en Ajustes se apunta a otro repositorio.
+  function traer(archivo) {
+    var propio = config.usuario === POR_DEFECTO.usuario &&
+                 config.repo === POR_DEFECTO.repo &&
+                 location.protocol.indexOf("http") === 0;
+    var cadena = Promise.reject();
+    if (propio) {
+      cadena = cadena.catch(function () {
+        return pedir("./" + archivo + "?t=" + Date.now());
+      });
+    }
+    return cadena.catch(function () { return pedir(urlCruda(archivo)); })
+                 .catch(function () { throw new Error(archivo + ": no se pudo leer"); });
   }
 
   // ---------------------------------------------------------------- //

@@ -1,7 +1,7 @@
 // Cachea el armazón de la app para que abra al instante y funcione sin
 // cobertura. Los precios NO se cachean aquí: van por red y, si falla, la
 // propia página tira de su copia en localStorage.
-const CACHE = "gesture-v12";
+const CACHE = "gesture-v13";
 const ARMAZON = [
   "./",
   "./index.html",
@@ -39,9 +39,12 @@ self.addEventListener("fetch", (ev) => {
   // La página lleva dentro la lógica de la app, así que va por red primero:
   // estando conectado siempre debe verse la última versión publicada. La
   // caché es solo la red de seguridad para cuando no hay cobertura.
+  // Los datos van por red igual que la página: una copia guardada de los
+  // precios es justo lo que no queremos enseñar teniendo conexión.
   const esPagina = ev.request.mode === "navigate" ||
                    url.pathname.endsWith("/") ||
-                   url.pathname.endsWith(".html");
+                   url.pathname.endsWith(".html") ||
+                   url.pathname.endsWith(".json");
   if (esPagina) {
     // GitHub Pages sirve la página con max-age=600, así que una publicación
     // nueva tardaba hasta diez minutos en verse. Se pide saltándose la caché

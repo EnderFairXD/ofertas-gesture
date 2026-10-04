@@ -427,7 +427,7 @@ El robot ya no sigue un solo artículo. En `scraper.py` hay una lista
 | Producto | Umbral | Tiendas |
 |---|---|---|
 | Steelcase Gesture | 750 € | 8 (España, UK, EE. UU., eBay) |
-| Beyerdynamic TYGR 300 R | 130 € | 4, **solo de la UE** |
+| Beyerdynamic TYGR 300 R | 140 € | 3, **solo UE y solo nuevos** |
 
 Los TYGR llevan `"solo_ue": True`: si alguna fuente devolviera una oferta de
 fuera de la Unión Europea, se descarta antes de publicarla. Nada de aduanas.
@@ -472,3 +472,28 @@ Y como en rebajas los precios duran horas, el workflow cambia de ritmo solo:
 ```
 
 La app enseña una banda arriba cuando está dentro de una de esas ventanas.
+
+
+---
+
+# Los auriculares: solo nuevos y solo donde se deja
+
+`"solo_ue": True` descarta cualquier oferta de fuera de la Unión. Y el filtro
+de títulos descarta además `b-stock`, `refurbished`, `reacondicionado`,
+`segunda mano`, `usado` y `open box`: solo producto de primera mano. Por eso
+se retiró la fuente de B-Stock de la propia Beyerdynamic (109 €) y la de eBay.
+
+| Tienda | Estado | Por qué |
+|---|---|---|
+| **Thomann (DE)** | rastreada, 158 € | microdatos `itemprop` |
+| **Amazon.es** | rastreada, 158 € | su robots.txt permite `/dp/<ASIN>`; solo prohíbe subrutas como `/dp/rate-this-item/` |
+| **Beyerdynamic oficial (UE)** | rastreada, 159 € | JSON-LD; es el precio de referencia del fabricante |
+| **Madrid Hifi** | enlace manual | reto de Cloudflare incluso desde una conexión doméstica |
+| **PcComponentes** | enlace manual | lo mismo |
+
+Amazon va marcada como **tolerante**: corta el paso a menudo cuando la
+petición no sale de una conexión doméstica, así que su fallo se informa en el
+estado del robot pero no pone el workflow en rojo. Las demás sí lo ponen.
+
+Madrid Hifi y PcComponentes rechazan clientes automáticos de forma explícita,
+así que no las fuerzo: aparecen en la app como enlace con la búsqueda hecha.

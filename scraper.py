@@ -191,6 +191,7 @@ class Resultado:
 
     nombre: str
     articulo: str = ""
+    tolerante: bool = False
     ofertas: list[Oferta] = field(default_factory=list)
     error: str | None = None
     nota: str | None = None
@@ -705,6 +706,41 @@ def jsonld_generico(
     ]
 
 
+def amazon_ficha(
+    cli: Cliente, tienda: str, producto: dict, asin: str, dominio: str = "https://www.amazon.es"
+) -> list[Oferta]:
+    """Ficha de Amazon por ASIN. Su robots.txt permite /dp/<ASIN> (solo prohíbe
+    subrutas como /dp/rate-this-item/), pero Amazon corta el paso a menudo
+    cuando la petición no viene de una conexión doméstica: por eso esta fuente
+    va marcada como tolerante y su fallo no pone el workflow en rojo."""
+    html = cli.get(f"{dominio}/dp/{asin}").text
+    if re.search(r"captcha|acceso automatizado|automated access|Pide ayuda", html, re.I):
+        raise RuntimeError("Amazon ha devuelto su página de verificación")
+
+    titulo = re.search(r'id="productTitle"[^>]*>([^<]+)', html)
+    nombre = limpiar(titulo.group(1)) if titulo else producto["nombre"]
+    if not interesa(nombre, producto):
+        raise SinResultados(f"la ficha no es {producto['nombre']}: {nombre[:60]}")
+
+    crudo = re.search(r'"displayPrice"\s*:\s*"([^"]+)"', html) or re.search(
+        r'<span class="a-offscreen">([^<]+)</span>', html
+    )
+    if not crudo:
+        raise LookupError("la ficha se descargó pero no expone precio")
+    texto = crudo.group(1).replace("\xa0", " ").replace("€", "").strip()
+    texto = texto.replace(".", "").replace(",", ".")
+    try:
+        precio = float(re.findall(r"\d+\.?\d*", texto)[0])
+    except (IndexError, ValueError):
+        raise LookupError(f"precio ilegible: {crudo.group(1)!r}")
+
+    agotado = bool(re.search(r"No disponible|Currently unavailable", html, re.I))
+    return [
+        Oferta(tienda, nombre, precio, "EUR", f"{dominio}/dp/{asin}",
+               disponible=not agotado, articulo=producto["id"])
+    ]
+
+
 def ebay_api(cli: Cliente, tienda: str, producto: dict, consulta: str | None = None) -> list[Oferta]:
     """Browse API oficial de eBay. Raspar ebay.es/sch devuelve 403 incluso desde
     una IP doméstica, así que la única vía estable es la API (gratuita)."""
@@ -888,8 +924,11 @@ PRODUCTOS: list[dict] = [
             "almohadilla", "earpad", "pad", "cable", "repuesto", "recambio",
             "spare", "funda", "case", "soporte", "stand", "fox", "team",
             "micrófono", "microphone", "bundle", "adaptador",
+            # Solo de primera mano: nada de reacondicionados ni de usados.
+            "b-stock", "bstock", "b stock", "refurbished", "reacondicionad",
+            "segunda mano", "2ª mano", "usado", "used", "open box", "openbox",
         ),
-        "umbral": float(os.getenv("UMBRAL_TYGR", "130")),
+        "umbral": float(os.getenv("UMBRAL_TYGR", "140")),
         "solo_ue": True,
         "fuentes": [
             {
@@ -899,29 +938,28 @@ PRODUCTOS: list[dict] = [
                 "entrega": ENTREGA_UE,
             },
             {
+                # Amazon suele cortar el paso desde servidores: va tolerante,
+                # su fallo no pone el workflow en rojo.
+                "nombre": "Amazon.es",
+                "adaptador": amazon_ficha,
+                "params": {"asin": "B07XYG56HS"},
+                "entrega": ENTREGA_ES,
+                "tolerante": True,
+            },
+            {
                 "nombre": "Beyerdynamic oficial (UE)",
                 "adaptador": jsonld_generico,
                 "params": {"url": "https://europe.beyerdynamic.com/p/tygr-300-r"},
                 "entrega": ENTREGA_UE,
             },
-            {
-                # Reacondicionados de la propia marca, bastante más baratos.
-                "nombre": "Beyerdynamic B-Stock (UE)",
-                "adaptador": jsonld_generico,
-                "params": {"url": "https://europe.beyerdynamic.com/p/tygr-300-r-b-stock"},
-                "entrega": ENTREGA_UE,
-            },
-            {
-                "nombre": "eBay (2ª mano)",
-                "adaptador": ebay_api,
-                "params": {},
-                "entrega": ENTREGA_ES,
-            },
         ],
+        # Madrid Hifi y PcComponentes responden con un reto de Cloudflare
+        # incluso desde una conexión doméstica: rechazan clientes automáticos,
+        # así que se ofrecen como enlace y no se rastrean.
         "a_mano": [
-            ("Wallapop", "https://es.wallapop.com/app/search?keywords=tygr%20300"),
+            ("Madrid Hifi", "https://www.madridhifi.com/buscar?controller=search&s=tygr+300+r"),
             ("PcComponentes", "https://www.pccomponentes.com/buscar/?query=tygr%20300%20r"),
-            ("Amazon.es", "https://www.amazon.es/s?k=beyerdynamic+tygr+300+r"),
+            ("Amazon.es (buscador)", "https://www.amazon.es/s?k=beyerdynamic+tygr+300+r"),
         ],
     },
 ]
@@ -1328,7 +1366,8 @@ def rastrear(cli: Cliente, producto: dict, cambio: dict[str, float]) -> list[Res
     for fuente in producto["fuentes"]:
         nombre = fuente["nombre"]
         log(f"-> {nombre}")
-        res = Resultado(nombre, articulo=producto["id"])
+        res = Resultado(nombre, articulo=producto["id"],
+                        tolerante=bool(fuente.get("tolerante")))
         try:
             crudas = fuente["adaptador"](cli, nombre, producto, **fuente["params"])
             for oferta in crudas:
@@ -1413,7 +1452,7 @@ def main() -> int:
 
     # Que una tienda no tenga el producto es información, no avería. Un error
     # de red o de formato sí: el workflow debe ponerse en rojo y enterarte.
-    averiadas = [r for r in resultados if not r.ok and not r.omitida]
+    averiadas = [r for r in resultados if not r.ok and not r.omitida and not r.tolerante]
     if averiadas:
         log("fuentes con error: " + ", ".join(
             f"{r.articulo}/{r.nombre}" for r in averiadas))
@@ -1445,6 +1484,7 @@ def estado(resultados: list[Resultado], total: int,
                                 "ok": r.ok,
                                 "omitida": r.omitida,
                                 "ofertas": len(r.ofertas),
+                                "tolerante": r.tolerante,
                                 "detalle": r.error or r.nota,
                             }
                             for r in resultados if r.articulo == prod["id"]

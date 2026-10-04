@@ -64,9 +64,14 @@ jobs:
         run: |
           git config user.name  'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          # La app los lee de su propio sitio (GitHub Pages) en vez de
+          # raw.githubusercontent, que cachea 5 minutos y sirve copias
+          # distintas según el cliente.
+          cp datos.json estado.json historico.json docs/ 2>/dev/null || true
           # avisos.json no existe hasta que salta el primer aviso, así que se
           # añade solo lo que haya.
-          for f in datos.json estado.json historico.json avisos.json; do
+          for f in datos.json estado.json historico.json avisos.json \
+                   docs/datos.json docs/estado.json docs/historico.json; do
             [ -f "$f" ] && git add "$f"
           done
           git diff --cached --quiet && { echo "Sin cambios."; exit 0; }
