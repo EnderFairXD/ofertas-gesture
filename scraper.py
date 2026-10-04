@@ -55,20 +55,18 @@ REINTENTOS = 3
 DIAS_CADUCIDAD = int(os.getenv("DIAS_CADUCIDAD", "14"))
 DIAS_HISTORICO = 365
 
-# Si lo más barato que puedes comprar de verdad baja de aquí, el robot avisa.
-UMBRAL_AVISO = float(os.getenv("UMBRAL_AVISO", "500"))
 # Con esto puesto a 1 se escribe el aviso en el log pero no se manda a nadie.
 AVISO_SIMULADO = os.getenv("AVISO_SIMULADO", "") == "1"
 
-# El producto que buscamos. Evita falsos positivos: sin esto, raspar una página
-# de resultados devuelve el precio de la primera silla cualquiera que salga.
-TERMINOS_OBLIGATORIOS = ("gesture",)
-TERMINOS_EXCLUIDOS = (
-    "funda", "cover", "repuesto", "recambio", "pieza", "spare", "part",
-    "rueda", "castor", "brazo", "armrest", "armcap", "cojin", "cojín",
-    "cushion", "cilindro", "cylinder", "manual", "cabecero", "headrest",
-    "stool", "taburete", "gas", "compatible", "replacement", "kit",
+# Rebajas: en estas ventanas los precios se mueven en horas, así que el aviso
+# por bajada relativa se vuelve más sensible y el mensaje lo dice.
+TEMPORADAS = (
+    ("Black Friday", (11, 17), (12, 2)),
+    ("Navidad y Reyes", (12, 18), (1, 7)),
 )
+CAIDA_NORMAL = 0.12      # 12 % por debajo de su precio habitual
+CAIDA_TEMPORADA = 0.07   # en rebajas basta con un 7 %
+DIAS_MINIMOS_PARA_COMPARAR = 5
 
 # Las tiendas Shopify cotizan según el mercado de la sesión: desde el runner
 # de GitHub (centro de datos en EE. UU.) la misma silla sale en dólares y a
@@ -154,6 +152,7 @@ class Oferta:
     disponible: bool = True
     entrega: str = ENTREGA_ES
     envio: float | None = None  # en la misma moneda que el precio
+    articulo: str = ""
 
     def a_dict(self, cambio: dict[str, float]) -> dict:
         tasa = cambio.get(self.moneda, 1.0 if self.moneda == "EUR" else None)
@@ -169,6 +168,7 @@ class Oferta:
                 total_eur *= IVA_IMPORTACION
             total_eur = round(total_eur, 2)
         return {
+            "Articulo": self.articulo,
             "Tienda": self.tienda,
             "Producto": self.producto,
             "Precio": round(self.precio, 2),
@@ -190,6 +190,7 @@ class Resultado:
     """Qué ha pasado con una fuente en esta ejecución."""
 
     nombre: str
+    articulo: str = ""
     ofertas: list[Oferta] = field(default_factory=list)
     error: str | None = None
     nota: str | None = None
@@ -206,11 +207,12 @@ def limpiar(texto: str) -> str:
     return re.sub(r"\s+", " ", re.sub(r"<[^>]+>", " ", texto or "")).strip()
 
 
-def interesa(titulo: str) -> bool:
+def interesa(titulo: str, producto: dict) -> bool:
+    """¿Este título es el producto que buscamos, y no un accesorio suyo?"""
     t = titulo.lower()
-    if not all(term in t for term in TERMINOS_OBLIGATORIOS):
+    if not all(term in t for term in producto["obligatorios"]):
         return False
-    return not any(term in t for term in TERMINOS_EXCLUIDOS)
+    return not any(term in t for term in producto["excluidos"])
 
 
 # --------------------------------------------------------------------------- #
@@ -401,6 +403,30 @@ def precio_desde_jsonld(html: str) -> tuple[str | None, float | None, str, bool]
             precio, moneda, disponible = min(candidatos, key=lambda c: c[0])
             return nodo.get("name"), precio, moneda, disponible
 
+    # Microdatos de schema.org: muchas tiendas grandes (Thomann, por ejemplo)
+    # no publican JSON-LD pero sí marcan el precio con itemprop.
+    micro = re.search(r'itemprop="price"[^>]*content="([^"]+)"', html)
+    if micro:
+        try:
+            valor = float(micro.group(1).replace(".", "").replace(",", ".")
+                          if "," in micro.group(1) else micro.group(1))
+        except ValueError:
+            valor = None
+        if valor is not None:
+            divisa = re.search(r'itemprop="priceCurrency"[^>]*content="([^"]+)"', html)
+            dispo = re.search(r'itemprop="availability"[^>]*(?:href|content)="([^"]+)"', html)
+            # El <title> nombra el producto; itemprop="name" suele caer en una
+            # miga de pan ("Home") en tiendas grandes.
+            nombre_micro = re.search(r"<title>(.*?)</title>", html, re.S) or re.search(
+                r'itemprop="name"[^>]*content="([^"]+)"', html
+            )
+            return (
+                limpiar(nombre_micro.group(1)) if nombre_micro else None,
+                valor,
+                divisa.group(1) if divisa else "EUR",
+                "outofstock" not in (dispo.group(1).lower() if dispo else ""),
+            )
+
     # Último recurso: metaetiquetas Open Graph.
     sopa = BeautifulSoup(html, "html.parser")
     meta = sopa.find("meta", property=re.compile(r"(product:price|og:price):amount"))
@@ -490,7 +516,7 @@ def tarifa_envio_shopify(
 
 
 def shopify_producto(
-    cli: Cliente, tienda: str, url_producto: str, moneda: str = "EUR"
+    cli: Cliente, tienda: str, producto: dict, url_producto: str, moneda: str = "EUR"
 ) -> list[Oferta]:
     """Una ficha concreta de una tienda Shopify. /products/<handle>.js devuelve
     el precio en céntimos y todas las variantes, sin HTML por medio."""
@@ -516,6 +542,7 @@ def shopify_producto(
             enlace=url_producto,
             disponible=bool(barata.get("available")),
             envio=envio,
+            articulo=producto["id"],
         )
     ]
 
@@ -523,23 +550,28 @@ def shopify_producto(
 def shopify_tienda(
     cli: Cliente,
     tienda: str,
+    producto: dict,
     dominio: str,
     moneda: str = "EUR",
     handle: str | None = None,
-    consulta: str = "steelcase gesture",
+    consulta: str | None = None,
 ) -> list[Oferta]:
     """Primero la ficha conocida; si el enlace muere (cambian el handle o
     retiran el producto), se cae al buscador de la propia tienda."""
     if handle:
         try:
-            return shopify_producto(cli, tienda, f"{dominio}/products/{handle}", moneda)
+            return shopify_producto(
+                cli, tienda, producto, f"{dominio}/products/{handle}", moneda
+            )
         except Exception as exc:
             log(f"    ficha {handle} no sirve ({exc.__class__.__name__}), pruebo el buscador")
-    return shopify_busqueda(cli, tienda, dominio, consulta, moneda)
+    return shopify_busqueda(
+        cli, tienda, producto, dominio, consulta or producto["consulta"], moneda
+    )
 
 
 def shopify_busqueda(
-    cli: Cliente, tienda: str, dominio: str, consulta: str, moneda: str
+    cli: Cliente, tienda: str, producto: dict, dominio: str, consulta: str, moneda: str
 ) -> list[Oferta]:
     """Buscador JSON de Shopify. Filtra por título para no colar otra silla."""
     url = (
@@ -559,27 +591,28 @@ def shopify_busqueda(
     ofertas = []
     for p in productos[:MAX_POR_TIENDA * 2]:
         titulo = p.get("title", "")
-        if not interesa(titulo):
+        if not interesa(titulo, producto):
             continue
         enlace = p.get("url", "")
         enlace = dominio + enlace.split("?")[0] if enlace.startswith("/") else enlace
         # Se pasa por la ficha: trae las variantes y permite pedir la tarifa
         # real de envío, cosa que el buscador no da.
         try:
-            ofertas.extend(shopify_producto(cli, tienda, enlace, moneda))
+            ofertas.extend(shopify_producto(cli, tienda, producto, enlace, moneda))
         except Exception as exc:
             log(f"    ficha {enlace.rsplit('/', 1)[-1]} ilegible ({exc.__class__.__name__})")
         if len(ofertas) >= MAX_POR_TIENDA:
             break
     if not ofertas and productos:
         raise SinResultados(
-            f"la tienda respondió ({len(productos)} resultados) pero ninguno es una Gesture"
+            f"la tienda respondió ({len(productos)} resultados) pero ninguno es "
+            f"{producto['nombre']}"
         )
     return ofertas
 
 
 def prestashop_busqueda(
-    cli: Cliente, tienda: str, url_busqueda: str, moneda: str = "EUR"
+    cli: Cliente, tienda: str, producto: dict, url_busqueda: str, moneda: str = "EUR"
 ) -> list[Oferta]:
     """Buscador de PrestaShop: el listado publica un ItemList en JSON-LD con
     nombre y URL; el precio se lee luego de la ficha de cada candidato."""
@@ -591,7 +624,7 @@ def prestashop_busqueda(
         for item in nodo.get("itemListElement", []):
             nombre = (item.get("name") or "").replace("&quot;", '"')
             enlace = item.get("url") or ""
-            if nombre and enlace and interesa(nombre):
+            if nombre and enlace and interesa(nombre, producto):
                 candidatos.append((nombre, enlace.split("#")[0]))
 
     ofertas = []
@@ -604,31 +637,34 @@ def prestashop_busqueda(
         _, precio, mon, disponible = precio_desde_jsonld(ficha)
         if precio:
             ofertas.append(
-                Oferta(tienda, nombre, precio, mon or moneda, enlace, disponible)
+                Oferta(tienda, nombre, precio, mon or moneda, enlace, disponible,
+                       articulo=producto["id"])
             )
     if not ofertas:
         raise SinResultados(
-            "el buscador respondió pero no hay ninguna Gesture en el catálogo"
+            f"el buscador respondió pero no hay {producto['nombre']} en el catálogo"
         )
     return ofertas
 
 
 def woocommerce_tienda(
-    cli: Cliente, tienda: str, dominio: str, consulta: str = "gesture", moneda: str = "GBP"
+    cli: Cliente, tienda: str, producto: dict, dominio: str,
+    consulta: str | None = None, moneda: str = "GBP"
 ) -> list[Oferta]:
     """WooCommerce publica un Store API sin autenticación en /wp-json/wc/store.
     Devuelve nombre, precio y existencias en JSON: nada de raspar HTML."""
     ultimo: Exception | None = None
+    busqueda = consulta or producto["consulta"]
     for ruta in ("/wp-json/wc/store/v1/products?search=", "/wp-json/wc/store/products?search="):
         try:
-            items = cli.json(dominio + ruta + urllib.parse.quote(consulta))
+            items = cli.json(dominio + ruta + urllib.parse.quote(busqueda))
         except Exception as exc:
             ultimo = exc
             continue
         ofertas = []
         for p in items if isinstance(items, list) else []:
             nombre = limpiar(p.get("name", ""))
-            if not interesa(nombre):
+            if not interesa(nombre, producto):
                 continue
             precios = p.get("prices") or {}
             crudo = precios.get("price")
@@ -643,16 +679,19 @@ def woocommerce_tienda(
                     moneda=precios.get("currency_code") or moneda,
                     enlace=p.get("permalink") or dominio,
                     disponible=bool(p.get("is_in_stock", True)),
+                    articulo=producto["id"],
                 )
             )
         if not ofertas:
-            raise SinResultados("el catálogo respondió pero no hay ninguna Gesture")
+            raise SinResultados(
+                f"el catálogo respondió pero no hay {producto['nombre']}"
+            )
         return ofertas
     raise RuntimeError(f"Store API no disponible: {ultimo}")
 
 
 def jsonld_generico(
-    cli: Cliente, tienda: str, url: str, render: bool = False
+    cli: Cliente, tienda: str, producto: dict, url: str, render: bool = False
 ) -> list[Oferta]:
     """Para cualquier tienda que publique schema.org/Product (WooCommerce,
     Magento, PrestaShop, la mayoría de temas modernos)."""
@@ -660,10 +699,13 @@ def jsonld_generico(
     nombre, precio, moneda, disponible = precio_desde_jsonld(html)
     if not precio:
         raise LookupError("la página se descargó pero no expone precio en JSON-LD")
-    return [Oferta(tienda, limpiar(nombre) or "Gesture", precio, moneda, url, disponible)]
+    return [
+        Oferta(tienda, limpiar(nombre) or producto["nombre"], precio, moneda, url,
+               disponible, articulo=producto["id"])
+    ]
 
 
-def ebay_api(cli: Cliente, tienda: str, consulta: str) -> list[Oferta]:
+def ebay_api(cli: Cliente, tienda: str, producto: dict, consulta: str | None = None) -> list[Oferta]:
     """Browse API oficial de eBay. Raspar ebay.es/sch devuelve 403 incluso desde
     una IP doméstica, así que la única vía estable es la API (gratuita)."""
     cid = os.getenv("EBAY_CLIENT_ID", "").strip()
@@ -673,6 +715,7 @@ def ebay_api(cli: Cliente, tienda: str, consulta: str) -> list[Oferta]:
             "faltan EBAY_CLIENT_ID / EBAY_CLIENT_SECRET (regístrate en developer.ebay.com)"
         )
     mercado = os.getenv("EBAY_MARKETPLACE", "EBAY_ES")
+    consulta = consulta or producto["consulta"]
 
     token = cli.sesion.post(
         "https://api.ebay.com/identity/v1/oauth2/token",
@@ -703,7 +746,7 @@ def ebay_api(cli: Cliente, tienda: str, consulta: str) -> list[Oferta]:
     ofertas = []
     for item in r.json().get("itemSummaries", []):
         titulo = item.get("title", "")
-        if not interesa(titulo):
+        if not interesa(titulo, producto):
             continue
         precio = item.get("price") or {}
         try:
@@ -734,6 +777,7 @@ def ebay_api(cli: Cliente, tienda: str, consulta: str) -> list[Oferta]:
                 enlace=item.get("itemWebUrl", ""),
                 entrega=entrega,
                 envio=envio,
+                articulo=producto["id"],
             )
         )
     ofertas.sort(key=lambda o: o.precio + (o.envio or 0))
@@ -744,81 +788,142 @@ def ebay_api(cli: Cliente, tienda: str, consulta: str) -> list[Oferta]:
 # Fuentes
 # --------------------------------------------------------------------------- #
 
-# Cada fuente declara su adaptador, sus parámetros y a dónde entrega. La zona
-# NO se deduce del país de la tienda: está comprobada en su propia página de
-# envíos, porque es lo que decide si un precio te sirve de algo.
-FUENTES: list[dict] = [
+# Cada producto trae sus tiendas, su filtro de títulos y su umbral de aviso.
+# Las fuentes declaran a dónde entregan, comprobado en su página de envíos:
+# eso es lo que decide si un precio te sirve de algo.
+PRODUCTOS: list[dict] = [
     {
-        "nombre": "Steelcase Oficial (ES)",
-        "adaptador": shopify_tienda,
-        "params": {"dominio": "https://es.steelcase.com", "handle": "gesture", "moneda": "EUR"},
-        "entrega": ENTREGA_ES,
+        "id": "gesture",
+        "nombre": "Steelcase Gesture",
+        "corto": "Gesture",
+        "consulta": "steelcase gesture",
+        "obligatorios": ("gesture",),
+        "excluidos": (
+            "funda", "cover", "repuesto", "recambio", "pieza", "spare", "part",
+            "rueda", "castor", "brazo", "armrest", "armcap", "cojin", "cojín",
+            "cushion", "cilindro", "cylinder", "manual", "cabecero", "headrest",
+            "stool", "taburete", "gas", "compatible", "replacement", "kit",
+        ),
+        "umbral": float(os.getenv("UMBRAL_GESTURE", "750")),
+        "solo_ue": False,
+        "fuentes": [
+            {
+                "nombre": "Steelcase Oficial (ES)",
+                "adaptador": shopify_tienda,
+                "params": {"dominio": "https://es.steelcase.com", "handle": "gesture",
+                           "moneda": "EUR"},
+                "entrega": ENTREGA_ES,
+            },
+            {
+                # Envía a España, pero avisan de que los aranceles e impuestos
+                # de importación se cobran al finalizar la compra.
+                "nombre": "The Office Crowd (reacond. ES)",
+                "adaptador": shopify_tienda,
+                "params": {
+                    "dominio": "https://theofficecrowd.es",
+                    "handle": "steelcase-gesture-ergonomic-office-chair-grey-fabric-refurbished",
+                    "moneda": "EUR",
+                },
+                "entrega": ENTREGA_IMPORTA,
+            },
+            {
+                "nombre": "The Office Crowd (reacond. UK)",
+                "adaptador": shopify_tienda,
+                "params": {"dominio": "https://theofficecrowd.com", "moneda": "GBP"},
+                "entrega": ENTREGA_IMPORTA,
+            },
+            {
+                # "FREE SHIPPING WITHIN LONDON M25" y ninguna otra zona.
+                "nombre": "Chair Smith (reacond. UK)",
+                "adaptador": woocommerce_tienda,
+                "params": {"dominio": "https://chairsmith.co.uk", "consulta": "gesture",
+                           "moneda": "GBP"},
+                "entrega": ENTREGA_NO,
+            },
+            {
+                # "Free Chair Delivery to UK Mainland", sin envíos fuera.
+                "nombre": "Barkham Office Furniture (UK)",
+                "adaptador": jsonld_generico,
+                "params": {"url": "https://barkhamofficefurniture.co.uk/"
+                                  "steelcase-gesture-chair-43625-p.asp"},
+                "entrega": ENTREGA_NO,
+            },
+            {
+                # "International Shipping is now available at additional fees".
+                "nombre": "Office Logix Shop (reacond. EE. UU.)",
+                "adaptador": shopify_tienda,
+                "params": {"dominio": "https://www.officelogixshop.com", "moneda": "USD"},
+                "entrega": ENTREGA_IMPORTA,
+            },
+            {
+                "nombre": "Oficinas Montiel (2ª mano)",
+                "adaptador": prestashop_busqueda,
+                "params": {"url_busqueda": "https://www.oficinasmontiel.com/"
+                                           "busqueda?controller=search&s=gesture"},
+                "entrega": ENTREGA_ES,
+            },
+            {
+                "nombre": "eBay (2ª mano)",
+                "adaptador": ebay_api,
+                "params": {},
+                "entrega": ENTREGA_ES,
+            },
+        ],
+        "a_mano": [
+            ("Wallapop", "https://es.wallapop.com/app/search?keywords=steelcase%20gesture"),
+            ("Milanuncios", "https://www.milanuncios.com/anuncios/?s=steelcase%20gesture"),
+            ("Corporate Spec (UK)",
+             "https://corporatespec.com/?s=steelcase+gesture&post_type=product"),
+            ("PcComponentes", "https://www.pccomponentes.com/buscar/?query=steelcase%20gesture"),
+        ],
     },
     {
-        # Envía a España, pero avisan de que los aranceles e impuestos de
-        # importación se cobran al finalizar la compra.
-        "nombre": "The Office Crowd (reacond. ES)",
-        "adaptador": shopify_tienda,
-        "params": {
-            "dominio": "https://theofficecrowd.es",
-            "handle": "steelcase-gesture-ergonomic-office-chair-grey-fabric-refurbished",
-            "moneda": "EUR",
-        },
-        "entrega": ENTREGA_IMPORTA,
+        # Solo tiendas de la Unión Europea: sin aduanas ni IVA de importación.
+        "id": "tygr",
+        "nombre": "Beyerdynamic TYGR 300 R",
+        "corto": "TYGR 300 R",
+        "consulta": "beyerdynamic tygr 300",
+        "obligatorios": ("tygr",),
+        "excluidos": (
+            "almohadilla", "earpad", "pad", "cable", "repuesto", "recambio",
+            "spare", "funda", "case", "soporte", "stand", "fox", "team",
+            "micrófono", "microphone", "bundle", "adaptador",
+        ),
+        "umbral": float(os.getenv("UMBRAL_TYGR", "130")),
+        "solo_ue": True,
+        "fuentes": [
+            {
+                "nombre": "Thomann (DE)",
+                "adaptador": jsonld_generico,
+                "params": {"url": "https://www.thomann.es/beyerdynamic_tygr_300_r.htm"},
+                "entrega": ENTREGA_UE,
+            },
+            {
+                "nombre": "Beyerdynamic oficial (UE)",
+                "adaptador": jsonld_generico,
+                "params": {"url": "https://europe.beyerdynamic.com/p/tygr-300-r"},
+                "entrega": ENTREGA_UE,
+            },
+            {
+                # Reacondicionados de la propia marca, bastante más baratos.
+                "nombre": "Beyerdynamic B-Stock (UE)",
+                "adaptador": jsonld_generico,
+                "params": {"url": "https://europe.beyerdynamic.com/p/tygr-300-r-b-stock"},
+                "entrega": ENTREGA_UE,
+            },
+            {
+                "nombre": "eBay (2ª mano)",
+                "adaptador": ebay_api,
+                "params": {},
+                "entrega": ENTREGA_ES,
+            },
+        ],
+        "a_mano": [
+            ("Wallapop", "https://es.wallapop.com/app/search?keywords=tygr%20300"),
+            ("PcComponentes", "https://www.pccomponentes.com/buscar/?query=tygr%20300%20r"),
+            ("Amazon.es", "https://www.amazon.es/s?k=beyerdynamic+tygr+300+r"),
+        ],
     },
-    {
-        "nombre": "The Office Crowd (reacond. UK)",
-        "adaptador": shopify_tienda,
-        "params": {"dominio": "https://theofficecrowd.com", "moneda": "GBP"},
-        "entrega": ENTREGA_IMPORTA,
-    },
-    {
-        # Su página de entregas dice "FREE SHIPPING WITHIN LONDON M25" y no
-        # ofrece ninguna otra zona.
-        "nombre": "Chair Smith (reacond. UK)",
-        "adaptador": woocommerce_tienda,
-        "params": {"dominio": "https://chairsmith.co.uk", "consulta": "gesture", "moneda": "GBP"},
-        "entrega": ENTREGA_NO,
-    },
-    {
-        # "Free Chair Delivery to UK Mainland"; no mencionan envíos fuera del
-        # Reino Unido en ninguna parte.
-        "nombre": "Barkham Office Furniture (UK)",
-        "adaptador": jsonld_generico,
-        "params": {"url": "https://barkhamofficefurniture.co.uk/steelcase-gesture-chair-43625-p.asp"},
-        "entrega": ENTREGA_NO,
-    },
-    {
-        # "International Shipping is now available at additional fees as well",
-        # sin detallar tarifas. Desde Ohio, además, toca IVA de importación.
-        "nombre": "Office Logix Shop (reacond. EE. UU.)",
-        "adaptador": shopify_tienda,
-        "params": {"dominio": "https://www.officelogixshop.com", "moneda": "USD"},
-        "entrega": ENTREGA_IMPORTA,
-    },
-    {
-        "nombre": "Oficinas Montiel (2ª mano)",
-        "adaptador": prestashop_busqueda,
-        "params": {"url_busqueda": "https://www.oficinasmontiel.com/busqueda?controller=search&s=gesture"},
-        "entrega": ENTREGA_ES,
-    },
-    {
-        # Cada anuncio trae su país: la zona se decide anuncio por anuncio.
-        "nombre": "eBay (2ª mano)",
-        "adaptador": ebay_api,
-        "params": {"consulta": "steelcase gesture"},
-        "entrega": ENTREGA_ES,
-    },
-]
-
-# Tiendas que rechazan cualquier cliente automático (reto de Cloudflare incluso
-# desde una IP doméstica) o que exigen cabeceras firmadas. No se rastrean: la
-# app las ofrece como enlaces para mirarlas a mano.
-A_MANO = [
-    ("Wallapop", "https://es.wallapop.com/app/search?keywords=steelcase%20gesture"),
-    ("Milanuncios", "https://www.milanuncios.com/anuncios/?s=steelcase%20gesture"),
-    ("Corporate Spec (UK)", "https://corporatespec.com/?s=steelcase+gesture&post_type=product"),
-    ("PcComponentes", "https://www.pccomponentes.com/buscar/?query=steelcase%20gesture"),
 ]
 
 MAX_POR_TIENDA = 3
@@ -864,7 +969,10 @@ def fusionar(nuevas: list[dict], previas: list[dict], fallidas: set[str]) -> lis
     # El enlace entra en la clave: una tienda puede listar dos sillas con el
     # mismo nombre y distinto precio, y no deben pisarse.
     def clave(d: dict) -> str:
-        return f"{d.get('Tienda')}::{d.get('Producto')}::{d.get('Enlace')}".lower()
+        articulo = d.get("Articulo") or "gesture"  # los datos viejos no lo traían
+        return (
+            f"{articulo}::{d.get('Tienda')}::{d.get('Producto')}::{d.get('Enlace')}"
+        ).lower()
 
     por_clave = {clave(d): d for d in previas}
     salida = {clave(d): d for d in nuevas}
@@ -923,7 +1031,19 @@ def coste(oferta: dict) -> float | None:
     return None
 
 
-def actualizar_historico(publicadas: list[dict]) -> None:
+def cargar_historico() -> dict:
+    """{"gesture": [...], "tygr": [...]}. El formato antiguo era una lista
+    pelada, de cuando solo se seguía la silla: se migra sola."""
+    try:
+        datos = json.loads(ARCHIVO_HISTORICO.read_text(encoding="utf-8"))
+    except (FileNotFoundError, json.JSONDecodeError):
+        return {}
+    if isinstance(datos, list):
+        return {"gesture": datos}
+    return datos if isinstance(datos, dict) else {}
+
+
+def actualizar_historico(articulo: str, publicadas: list[dict]) -> list[dict]:
     """Un registro por día con lo más barato que podías comprar de verdad:
     en stock y con entrega en España. Si el robot pasa varias veces en el
     mismo día se queda con el mínimo de la jornada."""
@@ -948,12 +1068,8 @@ def actualizar_historico(publicadas: list[dict]) -> None:
         "tiendas": por_tienda,
     }
 
-    try:
-        dias = json.loads(ARCHIVO_HISTORICO.read_text(encoding="utf-8"))
-        dias = dias if isinstance(dias, list) else []
-    except (FileNotFoundError, json.JSONDecodeError):
-        dias = []
-
+    todo = cargar_historico()
+    dias = todo.get(articulo) or []
     previo = next((d for d in dias if d.get("fecha") == hoy), None)
     if previo is None:
         dias.append(registro)
@@ -972,14 +1088,15 @@ def actualizar_historico(publicadas: list[dict]) -> None:
         previo["tiendas"] = fusion
 
     dias.sort(key=lambda d: d.get("fecha", ""))
-    dias = dias[-DIAS_HISTORICO:]
+    todo[articulo] = dias[-DIAS_HISTORICO:]
     ARCHIVO_HISTORICO.write_text(
-        json.dumps(dias, ensure_ascii=False, indent=2) + "\n", encoding="utf-8"
+        json.dumps(todo, ensure_ascii=False, indent=2) + "\n", encoding="utf-8"
     )
     if registro["mejor"] is not None:
-        log(f"histórico: {hoy} -> {registro['mejor']:.2f} EUR ({registro['tienda']})")
+        log(f"   histórico: {hoy} -> {registro['mejor']:.2f} EUR ({registro['tienda']})")
     else:
-        log(f"histórico: {hoy} -> sin nada comprable")
+        log(f"   histórico: {hoy} -> sin nada comprable")
+    return todo[articulo]
 
 
 def euros(valor: float) -> str:
@@ -987,9 +1104,48 @@ def euros(valor: float) -> str:
     return f"{valor:,.2f} €".replace(",", "@").replace(".", ",").replace("@", ".")
 
 
-def mensaje_aviso(oferta: dict, valor: float) -> tuple[str, str]:
-    """Título y cuerpo del aviso, en el mismo texto para los dos canales."""
-    titulo = f"La Gesture ha bajado a {euros(valor)}"
+def temporada_actual(hoy: datetime | None = None) -> str | None:
+    """Black Friday y Navidad cruzan el cambio de año, así que la ventana se
+    compara por (mes, día) teniendo en cuenta la vuelta al 1 de enero."""
+    hoy = hoy or ahora()
+    actual = (hoy.month, hoy.day)
+    for nombre, desde, hasta in TEMPORADAS:
+        if desde <= hasta:
+            dentro = desde <= actual <= hasta
+        else:  # la ventana salta de diciembre a enero
+            dentro = actual >= desde or actual <= hasta
+        if dentro:
+            return nombre
+    return None
+
+
+def mediana(valores: list[float]) -> float | None:
+    datos = sorted(v for v in valores if isinstance(v, (int, float)))
+    if not datos:
+        return None
+    medio = len(datos) // 2
+    if len(datos) % 2:
+        return datos[medio]
+    return (datos[medio - 1] + datos[medio]) / 2
+
+
+def precio_habitual(historial: list[dict], excluir_fecha: str) -> float | None:
+    """Mediana de los últimos 30 días, sin contar hoy. La mediana y no la
+    media: un día raro no debe mover la referencia."""
+    recientes = [
+        d.get("mejor") for d in historial[-31:]
+        if d.get("fecha") != excluir_fecha and isinstance(d.get("mejor"), (int, float))
+    ]
+    if len(recientes) < DIAS_MINIMOS_PARA_COMPARAR:
+        return None
+    return mediana(recientes)
+
+
+def mensaje_aviso(producto: dict, oferta: dict, valor: float,
+                  motivos: list[str], temporada: str | None) -> tuple[str, str]:
+    """Título y cuerpo del aviso, el mismo texto para los dos canales."""
+    cabecera = f"[{temporada}] " if temporada else ""
+    titulo = f"{cabecera}{producto['corto']} a {euros(valor)}"
     if oferta.get("EnvioEUR") is None:
         cuentas = (
             f"{euros(oferta['PrecioEUR'])} de precio. "
@@ -1005,13 +1161,14 @@ def mensaje_aviso(oferta: dict, valor: float) -> tuple[str, str]:
         cuentas = " + ".join(partes)
 
     cuerpo = (
-        f"**{euros(valor)}** puesta en casa en **{oferta['Tienda']}**.\n\n"
+        f"**{euros(valor)}** puesto en casa en **{oferta['Tienda']}**.\n\n"
+        f"Producto: {producto['nombre']}\n\n"
         f"Entrega: {DESCRIPCION_ENTREGA.get(oferta.get('Entrega'), '?')}\n\n"
+        f"Motivo del aviso: {'; '.join(motivos)}\n\n"
         f"{oferta.get('Producto', '')}\n\n"
         f"Cuentas: {cuentas}\n\n"
         f"{oferta.get('Enlace', '')}\n\n"
-        f"_Aviso configurado en {euros(UMBRAL_AVISO)}. "
-        "No incluye aranceles ni gastos de despacho del transportista._"
+        "_No incluye aranceles ni gastos de despacho del transportista._"
     )
     return titulo, cuerpo
 
@@ -1025,16 +1182,16 @@ def enviar_telegram(cli: Cliente, titulo: str, cuerpo: str) -> bool:
         f"https://api.telegram.org/bot{ficha}/sendMessage",
         json={
             "chat_id": chat,
-            "text": f"🪑 *{titulo}*\n\n{cuerpo}",
+            "text": f"🔔 *{titulo}*\n\n{cuerpo}",
             "parse_mode": "Markdown",
             "disable_web_page_preview": False,
         },
         timeout=TIMEOUT,
     )
     if r.status_code >= 400:
-        log(f"  Telegram rechazó el aviso: HTTP {r.status_code} {r.text[:120]}")
+        log(f"   Telegram rechazó el aviso: HTTP {r.status_code} {r.text[:120]}")
         return False
-    log("  aviso enviado por Telegram")
+    log("   aviso enviado por Telegram")
     return True
 
 
@@ -1052,13 +1209,13 @@ def abrir_incidencia(cli: Cliente, titulo: str, cuerpo: str) -> bool:
             "Accept": "application/vnd.github+json",
             "X-GitHub-Api-Version": "2022-11-28",
         },
-        json={"title": f"🪑 {titulo}", "body": cuerpo},
+        json={"title": f"🔔 {titulo}", "body": cuerpo},
         timeout=TIMEOUT,
     )
     if r.status_code >= 400:
-        log(f"  GitHub rechazó la incidencia: HTTP {r.status_code} {r.text[:160]}")
+        log(f"   GitHub rechazó la incidencia: HTTP {r.status_code} {r.text[:160]}")
         return False
-    log(f"  aviso publicado como incidencia {r.json().get('html_url', '')}")
+    log(f"   aviso publicado como incidencia {r.json().get('html_url', '')}")
     return True
 
 
@@ -1078,45 +1235,69 @@ def apto_para_aviso(oferta: dict) -> bool:
     return coste(oferta) is not None
 
 
-def avisar(cli: Cliente, publicadas: list[dict]) -> dict:
-    """Avisa cuando lo más barato comprable de verdad baja del umbral.
-
-    No repite: solo vuelve a avisar si el precio baja todavía más. Si sube por
-    encima del umbral, el aviso se rearma para la próxima vez."""
+def cargar_avisos() -> dict:
     try:
-        memoria = json.loads(ARCHIVO_AVISOS.read_text(encoding="utf-8"))
+        datos = json.loads(ARCHIVO_AVISOS.read_text(encoding="utf-8"))
     except (FileNotFoundError, json.JSONDecodeError):
-        memoria = {}
+        return {}
+    if not isinstance(datos, dict):
+        return {}
+    if "ultimo_avisado" in datos:  # formato antiguo, de un solo producto
+        return {"gesture": datos}
+    return datos
+
+
+def avisar(cli: Cliente, producto: dict, publicadas: list[dict],
+           historial: list[dict]) -> None:
+    """Avisa por dos motivos: que baje del umbral, o que caiga bastante por
+    debajo de su precio habitual (lo que pilla las rebajas). No repite salvo
+    que baje todavía más, y se rearma cuando deja de haber motivo."""
+    todo = cargar_avisos()
+    memoria = todo.get(producto["id"]) or {}
 
     candidatas = [d for d in publicadas if apto_para_aviso(d)]
     if not candidatas:
-        return memoria
+        return
 
     mejor = min(candidatas, key=lambda d: coste(d))
     valor = coste(mejor)
-    ultimo = memoria.get("ultimo_avisado")
+    temporada = temporada_actual()
+    motivos = []
 
-    if valor >= UMBRAL_AVISO:
-        if ultimo is not None:
-            log(f"aviso rearmado: lo más barato vuelve a estar en {valor:.2f} €")
-            memoria = {"ultimo_avisado": None, "rearmado": ahora().isoformat(timespec="seconds")}
+    if valor < producto["umbral"]:
+        motivos.append(f"por debajo de tu umbral de {euros(producto['umbral'])}")
+
+    habitual = precio_habitual(historial, ahora().strftime("%Y-%m-%d"))
+    caida = CAIDA_TEMPORADA if temporada else CAIDA_NORMAL
+    if habitual and valor <= habitual * (1 - caida):
+        porcentaje = (1 - valor / habitual) * 100
+        motivos.append(
+            f"un {porcentaje:.0f} % por debajo de su precio habitual ({euros(habitual)})"
+        )
+
+    if not motivos:
+        if memoria.get("ultimo_avisado") is not None:
+            log(f"   aviso rearmado: lo más barato está en {euros(valor)}")
+            todo[producto["id"]] = {"ultimo_avisado": None,
+                                    "rearmado": ahora().isoformat(timespec="seconds")}
             ARCHIVO_AVISOS.write_text(
-                json.dumps(memoria, ensure_ascii=False, indent=2) + "\n", encoding="utf-8"
+                json.dumps(todo, ensure_ascii=False, indent=2) + "\n", encoding="utf-8"
             )
-        return memoria
+        return
 
+    ultimo = memoria.get("ultimo_avisado")
     if ultimo is not None and valor >= ultimo:
-        log(f"por debajo del umbral ({valor:.2f} €) pero ya avisado a {ultimo:.2f} €")
-        return memoria
+        log(f"   hay motivo de aviso ({euros(valor)}) pero ya avisé a {euros(ultimo)}")
+        return
 
-    titulo, cuerpo = mensaje_aviso(mejor, valor)
+    titulo, cuerpo = mensaje_aviso(producto, mejor, valor, motivos, temporada)
     if AVISO_SIMULADO:
-        log("AVISO SIMULADO, no se manda a nadie:")
-        log(f"  titulo: {titulo}")
+        log("   AVISO SIMULADO, no se manda a nadie:")
+        log(f"     titulo: {titulo}")
         for linea in cuerpo.split("\n"):
             if linea.strip():
-                log(f"  | {linea}")
-        return memoria
+                log(f"     | {linea}")
+        return
 
     canales = []
     if enviar_telegram(cli, titulo, cuerpo):
@@ -1124,35 +1305,32 @@ def avisar(cli: Cliente, publicadas: list[dict]) -> dict:
     if abrir_incidencia(cli, titulo, cuerpo):
         canales.append("incidencia")
     if not canales:
-        log("hay oferta por debajo del umbral pero no hay ningún canal de aviso configurado")
-        return memoria
+        log("   hay motivo de aviso pero no hay ningún canal configurado")
+        return
 
-    memoria = {
+    todo[producto["id"]] = {
         "ultimo_avisado": round(valor, 2),
         "fecha": ahora().isoformat(timespec="seconds"),
         "tienda": mejor["Tienda"],
         "enlace": mejor.get("Enlace"),
+        "motivos": motivos,
+        "temporada": temporada,
         "canales": canales,
     }
     ARCHIVO_AVISOS.write_text(
-        json.dumps(memoria, ensure_ascii=False, indent=2) + "\n", encoding="utf-8"
+        json.dumps(todo, ensure_ascii=False, indent=2) + "\n", encoding="utf-8"
     )
-    return memoria
 
 
-def main() -> int:
-    cli = Cliente()
-    if cli.clave_scraperapi:
-        log("ScraperAPI configurado: se usará como reintento ante bloqueos")
-    cambio = tasas_cambio(cli)
-
+def rastrear(cli: Cliente, producto: dict, cambio: dict[str, float]) -> list[Resultado]:
+    """Pasa por todas las tiendas de un producto."""
     resultados: list[Resultado] = []
-    for fuente in FUENTES:
+    for fuente in producto["fuentes"]:
         nombre = fuente["nombre"]
         log(f"-> {nombre}")
-        res = Resultado(nombre)
+        res = Resultado(nombre, articulo=producto["id"])
         try:
-            crudas = fuente["adaptador"](cli, nombre, **fuente["params"])
+            crudas = fuente["adaptador"](cli, nombre, producto, **fuente["params"])
             for oferta in crudas:
                 # eBay decide anuncio por anuncio; el resto hereda la de su tienda.
                 if oferta.entrega == ENTREGA_ES and fuente["entrega"] != ENTREGA_ES:
@@ -1175,53 +1353,104 @@ def main() -> int:
             log(f"   FALLO: {res.error}")
         resultados.append(res)
         time.sleep(random.uniform(1.5, 4.0))  # no martillear las tiendas
+    return resultados
 
-    nuevas = [o.a_dict(cambio) for r in resultados for o in r.ofertas]
-    fallidas = {r.nombre for r in resultados if not r.ok}
+
+def main() -> int:
+    cli = Cliente()
+    if cli.clave_scraperapi:
+        log("ScraperAPI configurado: se usará como reintento ante bloqueos")
+    temporada = temporada_actual()
+    if temporada:
+        log(f"temporada de rebajas: {temporada} (avisos más sensibles)")
+    cambio = tasas_cambio(cli)
+
     previas = cargar_previo()
-    final = fusionar(nuevas, previas, fallidas)
+    resultados: list[Resultado] = []
+    final: list[dict] = []
+    frescas = 0
+    conservados: list[str] = []
 
-    # Red de seguridad: jamás publicar una lista vacía sobre datos buenos.
-    if not final and previas:
-        log("ERROR: ninguna fuente dio precio; se conserva el datos.json anterior")
-        estado(resultados, len(previas), vacio=True)
+    for producto in PRODUCTOS:
+        log(f"=== {producto['nombre']}")
+        res_prod = rastrear(cli, producto, cambio)
+        resultados.extend(res_prod)
+
+        nuevas = [o.a_dict(cambio) for r in res_prod for o in r.ofertas]
+        if producto["solo_ue"]:
+            fuera = [d for d in nuevas if d["Entrega"] not in (ENTREGA_ES, ENTREGA_UE)]
+            if fuera:
+                log(f"   {len(fuera)} oferta(s) descartadas por venir de fuera de la UE")
+            nuevas = [d for d in nuevas if d["Entrega"] in (ENTREGA_ES, ENTREGA_UE)]
+
+        anteriores = [
+            d for d in previas if (d.get("Articulo") or "gesture") == producto["id"]
+        ]
+        fallidas = {r.nombre for r in res_prod if not r.ok}
+        cerrado = fusionar(nuevas, anteriores, fallidas)
+
+        # Red de seguridad por producto: nunca borrar lo bueno con una lista vacía.
+        if not cerrado and anteriores:
+            log(f"   ninguna fuente dio precio: se conservan {len(anteriores)} anteriores")
+            cerrado = anteriores
+            conservados.append(producto["id"])
+
+        final.extend(cerrado)
+        frescas += len(nuevas)
+        historial = actualizar_historico(producto["id"], cerrado)
+        avisar(cli, producto, cerrado, historial)
+
+    if not final:
+        log("ERROR: ninguna fuente dio precio y no había nada anterior")
+        estado(resultados, 0, conservados, temporada)
         return 1
 
     ARCHIVO_DATOS.write_text(
         json.dumps(final, ensure_ascii=False, indent=2) + "\n", encoding="utf-8"
     )
-    actualizar_historico(final)
-    avisar(cli, final)
-    estado(resultados, len(final))
-    log(f"datos.json escrito con {len(final)} oferta(s) ({len(nuevas)} frescas)")
+    estado(resultados, len(final), conservados, temporada)
+    log(f"datos.json escrito con {len(final)} oferta(s) ({frescas} frescas)")
 
     # Que una tienda no tenga el producto es información, no avería. Un error
     # de red o de formato sí: el workflow debe ponerse en rojo y enterarte.
     averiadas = [r for r in resultados if not r.ok and not r.omitida]
     if averiadas:
-        log("fuentes con error: " + ", ".join(r.nombre for r in averiadas))
+        log("fuentes con error: " + ", ".join(
+            f"{r.articulo}/{r.nombre}" for r in averiadas))
         return 1
     return 0
 
 
-def estado(resultados: list[Resultado], total: int, vacio: bool = False) -> None:
+def estado(resultados: list[Resultado], total: int,
+           conservados: list[str], temporada: str | None) -> None:
     ARCHIVO_ESTADO.write_text(
         json.dumps(
             {
                 "ejecutado": ahora().isoformat(timespec="seconds"),
                 "ofertas_publicadas": total,
-                "conservado_sin_cambios": vacio,
-                "a_mano": [{"nombre": n, "url": u} for n, u in A_MANO],
-                "umbral_aviso": UMBRAL_AVISO,
-                "fuentes": [
+                "conservado_sin_cambios": bool(conservados),
+                "temporada": temporada,
+                "productos": [
                     {
-                        "nombre": r.nombre,
-                        "ok": r.ok,
-                        "omitida": r.omitida,
-                        "ofertas": len(r.ofertas),
-                        "detalle": r.error or r.nota,
+                        "id": prod["id"],
+                        "nombre": prod["nombre"],
+                        "corto": prod["corto"],
+                        "umbral_aviso": prod["umbral"],
+                        "solo_ue": prod["solo_ue"],
+                        "conservado": prod["id"] in conservados,
+                        "a_mano": [{"nombre": n, "url": u} for n, u in prod["a_mano"]],
+                        "fuentes": [
+                            {
+                                "nombre": r.nombre,
+                                "ok": r.ok,
+                                "omitida": r.omitida,
+                                "ofertas": len(r.ofertas),
+                                "detalle": r.error or r.nota,
+                            }
+                            for r in resultados if r.articulo == prod["id"]
+                        ],
                     }
-                    for r in resultados
+                    for prod in PRODUCTOS
                 ],
             },
             ensure_ascii=False,

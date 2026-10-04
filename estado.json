@@ -1,82 +1,144 @@
 {
-  "ejecutado": "2026-10-04T11:39:30+00:00",
-  "ofertas_publicadas": 7,
+  "ejecutado": "2026-10-04T14:52:11+00:00",
+  "ofertas_publicadas": 10,
   "conservado_sin_cambios": false,
-  "a_mano": [
+  "temporada": null,
+  "productos": [
     {
-      "nombre": "Wallapop",
-      "url": "https://es.wallapop.com/app/search?keywords=steelcase%20gesture"
+      "id": "gesture",
+      "nombre": "Steelcase Gesture",
+      "corto": "Gesture",
+      "umbral_aviso": 750.0,
+      "solo_ue": false,
+      "conservado": false,
+      "a_mano": [
+        {
+          "nombre": "Wallapop",
+          "url": "https://es.wallapop.com/app/search?keywords=steelcase%20gesture"
+        },
+        {
+          "nombre": "Milanuncios",
+          "url": "https://www.milanuncios.com/anuncios/?s=steelcase%20gesture"
+        },
+        {
+          "nombre": "Corporate Spec (UK)",
+          "url": "https://corporatespec.com/?s=steelcase+gesture&post_type=product"
+        },
+        {
+          "nombre": "PcComponentes",
+          "url": "https://www.pccomponentes.com/buscar/?query=steelcase%20gesture"
+        }
+      ],
+      "fuentes": [
+        {
+          "nombre": "Steelcase Oficial (ES)",
+          "ok": true,
+          "omitida": false,
+          "ofertas": 1,
+          "detalle": null
+        },
+        {
+          "nombre": "The Office Crowd (reacond. ES)",
+          "ok": true,
+          "omitida": false,
+          "ofertas": 1,
+          "detalle": null
+        },
+        {
+          "nombre": "The Office Crowd (reacond. UK)",
+          "ok": true,
+          "omitida": false,
+          "ofertas": 0,
+          "detalle": "la tienda respondió (10 resultados) pero ninguno es Steelcase Gesture"
+        },
+        {
+          "nombre": "Chair Smith (reacond. UK)",
+          "ok": true,
+          "omitida": false,
+          "ofertas": 3,
+          "detalle": null
+        },
+        {
+          "nombre": "Barkham Office Furniture (UK)",
+          "ok": true,
+          "omitida": false,
+          "ofertas": 1,
+          "detalle": null
+        },
+        {
+          "nombre": "Office Logix Shop (reacond. EE. UU.)",
+          "ok": true,
+          "omitida": false,
+          "ofertas": 1,
+          "detalle": null
+        },
+        {
+          "nombre": "Oficinas Montiel (2ª mano)",
+          "ok": true,
+          "omitida": false,
+          "ofertas": 0,
+          "detalle": "el buscador respondió pero no hay Steelcase Gesture en el catálogo"
+        },
+        {
+          "nombre": "eBay (2ª mano)",
+          "ok": false,
+          "omitida": true,
+          "ofertas": 0,
+          "detalle": "faltan EBAY_CLIENT_ID / EBAY_CLIENT_SECRET (regístrate en developer.ebay.com)"
+        }
+      ]
     },
     {
-      "nombre": "Milanuncios",
-      "url": "https://www.milanuncios.com/anuncios/?s=steelcase%20gesture"
-    },
-    {
-      "nombre": "Corporate Spec (UK)",
-      "url": "https://corporatespec.com/?s=steelcase+gesture&post_type=product"
-    },
-    {
-      "nombre": "PcComponentes",
-      "url": "https://www.pccomponentes.com/buscar/?query=steelcase%20gesture"
-    }
-  ],
-  "umbral_aviso": 750.0,
-  "fuentes": [
-    {
-      "nombre": "Steelcase Oficial (ES)",
-      "ok": true,
-      "omitida": false,
-      "ofertas": 1,
-      "detalle": null
-    },
-    {
-      "nombre": "The Office Crowd (reacond. ES)",
-      "ok": true,
-      "omitida": false,
-      "ofertas": 1,
-      "detalle": null
-    },
-    {
-      "nombre": "The Office Crowd (reacond. UK)",
-      "ok": true,
-      "omitida": false,
-      "ofertas": 0,
-      "detalle": "la tienda respondió (10 resultados) pero ninguno es una Gesture"
-    },
-    {
-      "nombre": "Chair Smith (reacond. UK)",
-      "ok": true,
-      "omitida": false,
-      "ofertas": 3,
-      "detalle": null
-    },
-    {
-      "nombre": "Barkham Office Furniture (UK)",
-      "ok": true,
-      "omitida": false,
-      "ofertas": 1,
-      "detalle": null
-    },
-    {
-      "nombre": "Office Logix Shop (reacond. EE. UU.)",
-      "ok": true,
-      "omitida": false,
-      "ofertas": 1,
-      "detalle": null
-    },
-    {
-      "nombre": "Oficinas Montiel (2ª mano)",
-      "ok": true,
-      "omitida": false,
-      "ofertas": 0,
-      "detalle": "el buscador respondió pero no hay ninguna Gesture en el catálogo"
-    },
-    {
-      "nombre": "eBay (2ª mano)",
-      "ok": false,
-      "omitida": true,
-      "ofertas": 0,
-      "detalle": "faltan EBAY_CLIENT_ID / EBAY_CLIENT_SECRET (regístrate en developer.ebay.com)"
+      "id": "tygr",
+      "nombre": "Beyerdynamic TYGR 300 R",
+      "corto": "TYGR 300 R",
+      "umbral_aviso": 130.0,
+      "solo_ue": true,
+      "conservado": false,
+      "a_mano": [
+        {
+          "nombre": "Wallapop",
+          "url": "https://es.wallapop.com/app/search?keywords=tygr%20300"
+        },
+        {
+          "nombre": "PcComponentes",
+          "url": "https://www.pccomponentes.com/buscar/?query=tygr%20300%20r"
+        },
+        {
+          "nombre": "Amazon.es",
+          "url": "https://www.amazon.es/s?k=beyerdynamic+tygr+300+r"
+        }
+      ],
+      "fuentes": [
+        {
+          "nombre": "Thomann (DE)",
+          "ok": true,
+          "omitida": false,
+          "ofertas": 1,
+          "detalle": null
+        },
+        {
+          "nombre": "Beyerdynamic oficial (UE)",
+          "ok": true,
+          "omitida": false,
+          "ofertas": 1,
+          "detalle": null
+        },
+        {
+          "nombre": "Beyerdynamic B-Stock (UE)",
+          "ok": true,
+          "omitida": false,
+          "ofertas": 1,
+          "detalle": null
+        },
+        {
+          "nombre": "eBay (2ª mano)",
+          "ok": false,
+          "omitida": true,
+          "ofertas": 0,
+          "detalle": "faltan EBAY_CLIENT_ID / EBAY_CLIENT_SECRET (regístrate en developer.ebay.com)"
+        }
+      ]
     }
   ]
 }

@@ -139,6 +139,46 @@ img { max-width: 100%; }
   .recargar[data-cargando="si"] svg { animation: none; opacity: .5; }
 }
 
+/* --- Selector de producto --------------------------------------------- */
+.productos {
+  display: flex;
+  gap: 6px;
+  margin-top: 16px;
+  padding: 4px;
+  border: 1px solid var(--linea);
+  border-radius: 12px;
+  background: var(--superficie);
+  overflow-x: auto;
+}
+.productos button {
+  flex: 1 1 auto;
+  min-width: 0;
+  white-space: nowrap;
+  font: inherit;
+  font-size: .86rem;
+  font-weight: 600;
+  padding: 9px 14px;
+  border: 0;
+  border-radius: 9px;
+  background: transparent;
+  color: var(--tinta-2);
+  cursor: pointer;
+}
+.productos button[aria-pressed="true"] { background: var(--acento); color: var(--papel); }
+.productos button:hover:not([aria-pressed="true"]) { color: var(--tinta); }
+
+.rebajas {
+  margin-top: 14px;
+  padding: 10px 14px;
+  border: 1px solid var(--linea);
+  border-left: 3px solid var(--serie);
+  border-radius: 8px;
+  background: var(--superficie);
+  font-size: .84rem;
+  font-weight: 600;
+  color: var(--tinta-2);
+}
+
 /* --- Aviso ------------------------------------------------------------ */
 .aviso {
   margin-top: 16px;
@@ -482,7 +522,7 @@ img { max-width: 100%; }
   <div class="envoltorio cabecera-fila">
     <img class="logotipo" src="icon-192.png" alt="" width="34" height="34">
     <div class="titulos">
-      <h1>Steelcase Gesture</h1>
+      <h1 id="titulo-producto">Monitor de precios</h1>
       <p id="sello">Cargando precios…</p>
     </div>
     <button class="recargar" id="recargar" type="button" title="Actualizar" aria-label="Actualizar">
@@ -495,6 +535,8 @@ img { max-width: 100%; }
 </header>
 
 <main class="envoltorio">
+  <nav class="productos" id="selector" aria-label="Producto"></nav>
+  <p class="rebajas" id="rebajas" hidden></p>
   <p class="aviso" id="aviso" hidden></p>
 
   <section class="destacado" id="destacado" hidden>
@@ -589,6 +631,7 @@ img { max-width: 100%; }
   var CLAVE_CACHE = "gesture.cache";
   var CLAVE_PRECIOS = "gesture.precios";
   var CLAVE_TOKEN = "gesture.token";
+  var CLAVE_PRODUCTO = "gesture.producto";
   var MINUTO = 60000;
 
   // localStorage puede lanzar (modo privado, cookies bloqueadas): nunca debe
@@ -670,10 +713,39 @@ img { max-width: 100%; }
     caja.hidden = !texto;
   }
 
-  function pintar(datos, estado, origen, dias) {
+  function pintar(datos, estado, origen, historicos) {
+    TODO = {
+      datos: datos || [],
+      estado: estado,
+      historicos: normalizarHistorico(historicos)
+    };
     estadoActual = estado;
-    pintarHistorico(dias);
-    var ofertas = (datos || []).slice().sort(function (a, b) {
+
+    var banda = $("rebajas");
+    if (estado && estado.temporada) {
+      banda.textContent = "🔔 " + estado.temporada + ": el robot vigila más de cerca " +
+                          "y avisa con bajadas más pequeñas.";
+      banda.hidden = false;
+    } else {
+      banda.hidden = true;
+    }
+
+    var lista = productosDisponibles();
+    if (lista.length && !productoActual()) { seleccionado = lista[0].id; }
+    if (lista.length && productoActual()) { seleccionado = productoActual().id; }
+    pintarSelector(lista);
+    pintarProducto(origen);
+  }
+
+  function pintarProducto(origen) {
+    var prod = productoActual();
+    var id = prod ? prod.id : "gesture";
+    $("titulo-producto").textContent = prod ? (prod.nombre || prod.corto) : "Monitor de precios";
+    pintarHistorico(TODO.historicos[id] || [], prod);
+
+    var ofertas = (TODO.datos || []).filter(function (o) {
+      return (o.Articulo || "gesture") === id;
+    }).sort(function (a, b) {
       var lejosA = entregaDe(a) === "no" ? 1 : 0;
       var lejosB = entregaDe(b) === "no" ? 1 : 0;
       if (lejosA !== lejosB) { return lejosA - lejosB; }
@@ -757,8 +829,8 @@ img { max-width: 100%; }
       escribir(CLAVE_PRECIOS, instantanea);
     }
 
-    pintarEstado(estado);
-    pintarManuales(estado);
+    pintarEstado(prod);
+    pintarManuales(prod);
 
     var sello = origen === "cache"
       ? "Sin conexión · datos guardados"
@@ -766,8 +838,8 @@ img { max-width: 100%; }
     $("sello").textContent = sello;
   }
 
-  function pintarManuales(estado) {
-    var sitios = (estado && estado.a_mano) || [];
+  function pintarManuales(prod) {
+    var sitios = (prod && prod.a_mano) || [];
     $("bloque-mano").hidden = sitios.length === 0;
     $("enlaces-mano").innerHTML = sitios.map(function (s) {
       return '<a href="' + escapar(s.url) + '" target="_blank" rel="noopener">' +
@@ -775,11 +847,11 @@ img { max-width: 100%; }
     }).join("");
   }
 
-  function pintarEstado(estado) {
+  function pintarEstado(prod) {
     var panel = $("panel-estado");
-    if (!estado || !estado.fuentes) { panel.hidden = true; return; }
+    if (!prod || !prod.fuentes) { panel.hidden = true; return; }
     panel.hidden = false;
-    $("cuerpo-estado").innerHTML = estado.fuentes.map(function (f) {
+    $("cuerpo-estado").innerHTML = prod.fuentes.map(function (f) {
       var ok = f.ok && f.ofertas ? "si" : (f.ok ? "neutro" : "no");
       return '<div class="fuente" data-ok="' + ok + '">' +
                '<i class="punto"></i>' +
@@ -788,7 +860,7 @@ img { max-width: 100%; }
              "</div>";
     }).join("") +
     '<div class="fuente"><i class="punto"></i><div><span>Última ejecución ' +
-      escapar(hace(estado.ejecutado)) + "</span></div></div>";
+      escapar(hace(estadoActual && estadoActual.ejecutado)) + "</span></div></div>";
   }
 
   function escapar(texto) {
@@ -810,6 +882,56 @@ img { max-width: 100%; }
 
   var historico = [];
   var estadoActual = null;
+  // Todo lo descargado; el producto elegido decide qué se pinta de ello.
+  var TODO = { datos: [], estado: null, historicos: {} };
+  var seleccionado = leer(CLAVE_PRODUCTO, "");
+
+  // El histórico era una lista pelada cuando solo se seguía la silla.
+  function normalizarHistorico(h) {
+    if (!h) { return {}; }
+    return Object.prototype.toString.call(h) === "[object Array]" ? { gesture: h } : h;
+  }
+
+  function productosDisponibles() {
+    var delEstado = TODO.estado && TODO.estado.productos;
+    if (delEstado && delEstado.length) { return delEstado; }
+    // Sin estado.json todavía: se deducen de las propias ofertas.
+    var vistos = {}, salida = [];
+    (TODO.datos || []).forEach(function (o) {
+      var id = o.Articulo || "gesture";
+      if (!vistos[id]) {
+        vistos[id] = true;
+        salida.push({ id: id, nombre: id, corto: id });
+      }
+    });
+    return salida;
+  }
+
+  function productoActual() {
+    var lista = productosDisponibles();
+    for (var i = 0; i < lista.length; i++) {
+      if (lista[i].id === seleccionado) { return lista[i]; }
+    }
+    return lista[0] || null;
+  }
+
+  function pintarSelector(lista) {
+    var caja = $("selector");
+    caja.hidden = lista.length < 2;
+    caja.innerHTML = lista.map(function (p) {
+      return '<button type="button" data-id="' + escapar(p.id) + '" aria-pressed="' +
+             (p.id === seleccionado) + '">' + escapar(p.corto || p.nombre) + "</button>";
+    }).join("");
+    [].forEach.call(caja.querySelectorAll("button"), function (b) {
+      b.addEventListener("click", function () {
+        seleccionado = b.dataset.id;
+        escribir(CLAVE_PRODUCTO, seleccionado);
+        pintarSelector(productosDisponibles());
+        pintarProducto("red");
+        window.scrollTo({ top: 0, behavior: "smooth" });
+      });
+    });
+  }
 
   function dia(fecha) {
     var t = fecha.split("-");
@@ -821,11 +943,15 @@ img { max-width: 100%; }
     return ("0" + d.getDate()).slice(-2) + "/" + ("0" + (d.getMonth() + 1)).slice(-2);
   }
 
-  function pintarHistorico(dias) {
+  function pintarHistorico(dias, prod) {
     historico = (dias || []).filter(function (d) { return typeof d.mejor === "number"; });
     var bloque = $("bloque-historico");
     bloque.hidden = historico.length === 0;
-    if (!historico.length) { return; }
+    if (!historico.length) {
+      $("cifras").innerHTML = "";
+      $("lienzo").innerHTML = "";
+      return;
+    }
 
     // --- Cifras que resumen la serie ---
     var valores = historico.map(function (d) { return d.mejor; });
@@ -864,9 +990,10 @@ img { max-width: 100%; }
 
     // --- Vista de tabla, para no dejar nada solo en la gráfica ---
     var umbral = $("umbral");
-    if (estadoActual && typeof estadoActual.umbral_aviso === "number") {
-      umbral.textContent = "Te avisaré en cuanto baje de " +
-        sinDecimales.format(estadoActual.umbral_aviso) + " puesta en casa.";
+    if (prod && typeof prod.umbral_aviso === "number") {
+      umbral.textContent = "Te avisaré si baja de " +
+        sinDecimales.format(prod.umbral_aviso) + " puesto en casa, o si cae bastante " +
+        "por debajo de su precio habitual.";
       umbral.hidden = false;
     } else {
       umbral.hidden = true;

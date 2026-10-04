@@ -415,3 +415,60 @@ el precio a secas, pero el mensaje lo dice.
 Las Gesture de particular que aparecen en Wallapop rondan los 710-800 €, así
 que 750 € puestos en casa es el filo de lo que es una buena compra aquí. Con
 500 € el aviso no habría saltado nunca.
+
+
+---
+
+# Dos productos: la silla y los auriculares
+
+El robot ya no sigue un solo artículo. En `scraper.py` hay una lista
+`PRODUCTOS`, y cada uno trae sus tiendas, su filtro de títulos y su umbral:
+
+| Producto | Umbral | Tiendas |
+|---|---|---|
+| Steelcase Gesture | 750 € | 8 (España, UK, EE. UU., eBay) |
+| Beyerdynamic TYGR 300 R | 130 € | 4, **solo de la UE** |
+
+Los TYGR llevan `"solo_ue": True`: si alguna fuente devolviera una oferta de
+fuera de la Unión Europea, se descarta antes de publicarla. Nada de aduanas.
+
+Fuentes de los auriculares, todas comprobadas:
+
+- **Thomann (DE)** — 158 €. Publica el precio en microdatos (`itemprop`), no en
+  JSON-LD, así que se añadió ese lector al extractor genérico.
+- **Beyerdynamic oficial (UE)** — 159 €.
+- **Beyerdynamic B-Stock (UE)** — **109 €**, reacondicionados de la propia marca.
+
+En la app aparece un selector arriba para cambiar de producto; cada uno tiene
+su precio destacado, su lista, su curva, su umbral y sus enlaces manuales.
+
+**Pendiente**: ninguna de las tres tiendas de auriculares publica una tarifa de
+envío consultable, así que ahí la app dice «envío sin calcular». Beyerdynamic
+anuncia "Free Shipping*" con asterisco y no me fío de dar por hecho el cero.
+
+## Formato de los archivos
+
+`datos.json` gana un campo `Articulo`. `historico.json` y `avisos.json` pasan a
+ser diccionarios por producto. Los formatos antiguos se migran solos: una lista
+pelada se interpreta como la silla.
+
+# Avisos en rebajas
+
+Además del umbral, hay un segundo motivo de aviso: **que el precio caiga
+bastante por debajo de su precio habitual**, calculado como la mediana de los
+últimos 30 días (mediana y no media, para que un día raro no mueva la
+referencia). Hacen falta al menos 5 días medidos.
+
+- Todo el año: avisa con una caída del **12 %**.
+- En **Black Friday** (17 nov – 2 dic) y **Navidad y Reyes** (18 dic – 7 ene):
+  basta un **7 %**, y el aviso lleva el nombre de la temporada en el título.
+
+Y como en rebajas los precios duran horas, el workflow cambia de ritmo solo:
+
+```yaml
+- cron: '0 6 * * *'          # todo el año, una vez al día
+- cron: '0 */4 * 11,12 *'    # noviembre y diciembre, cada 4 horas
+- cron: '0 */4 1-7 1 *'      # primera semana de enero
+```
+
+La app enseña una banda arriba cuando está dentro de una de esas ventanas.

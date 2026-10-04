@@ -5,6 +5,10 @@ on:
     # 06:00 UTC = 08:00 en España en horario de verano (07:00 en invierno).
     # El cron de GitHub SIEMPRE va en UTC.
     - cron: '0 6 * * *'
+    # En rebajas los precios duran horas, no días: noviembre y diciembre se
+    # rastrean cada 4 horas, y la primera semana de enero por los Reyes.
+    - cron: '0 */4 * 11,12 *'
+    - cron: '0 */4 1-7 1 *'
   workflow_dispatch:
 
 permissions:
@@ -39,8 +43,9 @@ jobs:
           EBAY_CLIENT_SECRET: ${{ secrets.EBAY_CLIENT_SECRET }}
           EBAY_MARKETPLACE: EBAY_ES
           SCRAPERAPI_KEY: ${{ secrets.SCRAPERAPI_KEY }}   # opcional
-          # Avisos cuando el precio puesto en casa baje del umbral.
-          UMBRAL_AVISO: '750'
+          # Umbral de aviso de cada producto, en euros puestos en casa.
+          UMBRAL_GESTURE: '750'
+          UMBRAL_TYGR: '130'
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           TELEGRAM_TOKEN: ${{ secrets.TELEGRAM_TOKEN }}        # opcional
           TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}    # opcional

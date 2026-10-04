@@ -1,5 +1,6 @@
 [
   {
+    "Articulo": "gesture",
     "Tienda": "Office Logix Shop (reacond. EE. UU.)",
     "Producto": "Steelcase Gesture Chair",
     "Precio": 559.95,
@@ -12,9 +13,10 @@
     "Disponible": true,
     "Entrega": "importa",
     "Estado": "ok",
-    "Última actualización": "2026-10-04T11:39:30+00:00"
+    "Última actualización": "2026-10-04T14:52:00+00:00"
   },
   {
+    "Articulo": "gesture",
     "Tienda": "Steelcase Oficial (ES)",
     "Producto": "Gesture – Silla de oficina ergonómica",
     "Precio": 1169.0,
@@ -27,9 +29,10 @@
     "Disponible": true,
     "Entrega": "es",
     "Estado": "ok",
-    "Última actualización": "2026-10-04T11:39:30+00:00"
+    "Última actualización": "2026-10-04T14:52:00+00:00"
   },
   {
+    "Articulo": "gesture",
     "Tienda": "The Office Crowd (reacond. ES)",
     "Producto": "Steelcase Silla de oficina ergonómica Gesture - Tela gris - Reacondicionada",
     "Precio": 785.95,
@@ -42,9 +45,10 @@
     "Disponible": false,
     "Entrega": "importa",
     "Estado": "sin stock",
-    "Última actualización": "2026-10-04T11:39:30+00:00"
+    "Última actualización": "2026-10-04T14:52:00+00:00"
   },
   {
+    "Articulo": "gesture",
     "Tienda": "Chair Smith (reacond. UK)",
     "Producto": "Refurbished Steelcase Gesture Task chair",
     "Precio": 444.0,
@@ -57,9 +61,10 @@
     "Disponible": true,
     "Entrega": "no",
     "Estado": "ok",
-    "Última actualización": "2026-10-04T11:39:30+00:00"
+    "Última actualización": "2026-10-04T14:52:00+00:00"
   },
   {
+    "Articulo": "gesture",
     "Tienda": "Chair Smith (reacond. UK)",
     "Producto": "Refurbished Steelcase Gesture Task chair",
     "Precio": 480.0,
@@ -72,9 +77,10 @@
     "Disponible": true,
     "Entrega": "no",
     "Estado": "ok",
-    "Última actualización": "2026-10-04T11:39:30+00:00"
+    "Última actualización": "2026-10-04T14:52:00+00:00"
   },
   {
+    "Articulo": "gesture",
     "Tienda": "Chair Smith (reacond. UK)",
     "Producto": "Steelcase Gesture Task chair",
     "Precio": 420.0,
@@ -87,9 +93,10 @@
     "Disponible": false,
     "Entrega": "no",
     "Estado": "sin stock",
-    "Última actualización": "2026-10-04T11:39:30+00:00"
+    "Última actualización": "2026-10-04T14:52:00+00:00"
   },
   {
+    "Articulo": "gesture",
     "Tienda": "Barkham Office Furniture (UK)",
     "Producto": "Steelcase Gesture Chair",
     "Precio": 534.0,
@@ -102,6 +109,54 @@
     "Disponible": false,
     "Entrega": "no",
     "Estado": "sin stock",
-    "Última actualización": "2026-10-04T11:39:30+00:00"
+    "Última actualización": "2026-10-04T14:52:00+00:00"
+  },
+  {
+    "Articulo": "tygr",
+    "Tienda": "Beyerdynamic B-Stock (UE)",
+    "Producto": "TYGR 300 R (B-Stock)",
+    "Precio": 109.0,
+    "Moneda": "EUR",
+    "PrecioEUR": 109.0,
+    "Envio": null,
+    "EnvioEUR": null,
+    "TotalEUR": null,
+    "Enlace": "https://europe.beyerdynamic.com/p/tygr-300-r-b-stock",
+    "Disponible": true,
+    "Entrega": "ue",
+    "Estado": "ok",
+    "Última actualización": "2026-10-04T14:52:11+00:00"
+  },
+  {
+    "Articulo": "tygr",
+    "Tienda": "Thomann (DE)",
+    "Producto": "beyerdynamic TYGR 300 R – Thomann España",
+    "Precio": 158.0,
+    "Moneda": "EUR",
+    "PrecioEUR": 158.0,
+    "Envio": null,
+    "EnvioEUR": null,
+    "TotalEUR": null,
+    "Enlace": "https://www.thomann.es/beyerdynamic_tygr_300_r.htm",
+    "Disponible": true,
+    "Entrega": "ue",
+    "Estado": "ok",
+    "Última actualización": "2026-10-04T14:52:11+00:00"
+  },
+  {
+    "Articulo": "tygr",
+    "Tienda": "Beyerdynamic oficial (UE)",
+    "Producto": "TYGR 300 R",
+    "Precio": 159.0,
+    "Moneda": "EUR",
+    "PrecioEUR": 159.0,
+    "Envio": null,
+    "EnvioEUR": null,
+    "TotalEUR": null,
+    "Enlace": "https://europe.beyerdynamic.com/p/tygr-300-r",
+    "Disponible": true,
+    "Entrega": "ue",
+    "Estado": "ok",
+    "Última actualización": "2026-10-04T14:52:11+00:00"
   }
 ]
