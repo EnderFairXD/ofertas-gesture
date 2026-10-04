@@ -13,7 +13,7 @@
     "Disponible": true,
     "Entrega": "importa",
     "Estado": "ok",
-    "Última actualización": "2026-10-04T18:54:16+00:00"
+    "Última actualización": "2026-10-04T18:56:34+00:00"
   },
   {
     "Articulo": "gesture",
@@ -29,7 +29,7 @@
     "Disponible": true,
     "Entrega": "es",
     "Estado": "ok",
-    "Última actualización": "2026-10-04T18:54:16+00:00"
+    "Última actualización": "2026-10-04T18:56:34+00:00"
   },
   {
     "Articulo": "gesture",
@@ -45,7 +45,7 @@
     "Disponible": false,
     "Entrega": "importa",
     "Estado": "sin stock",
-    "Última actualización": "2026-10-04T18:54:16+00:00"
+    "Última actualización": "2026-10-04T18:56:34+00:00"
   },
   {
     "Articulo": "gesture",
@@ -61,7 +61,7 @@
     "Disponible": true,
     "Entrega": "no",
     "Estado": "ok",
-    "Última actualización": "2026-10-04T18:54:16+00:00"
+    "Última actualización": "2026-10-04T18:56:34+00:00"
   },
   {
     "Articulo": "gesture",
@@ -77,7 +77,7 @@
     "Disponible": true,
     "Entrega": "no",
     "Estado": "ok",
-    "Última actualización": "2026-10-04T18:54:16+00:00"
+    "Última actualización": "2026-10-04T18:56:34+00:00"
   },
   {
     "Articulo": "gesture",
@@ -93,7 +93,7 @@
     "Disponible": false,
     "Entrega": "no",
     "Estado": "sin stock",
-    "Última actualización": "2026-10-04T18:54:16+00:00"
+    "Última actualización": "2026-10-04T18:56:34+00:00"
   },
   {
     "Articulo": "gesture",
@@ -109,7 +109,7 @@
     "Disponible": false,
     "Entrega": "no",
     "Estado": "sin stock",
-    "Última actualización": "2026-10-04T18:54:16+00:00"
+    "Última actualización": "2026-10-04T18:56:34+00:00"
   },
   {
     "Articulo": "tygr",
@@ -125,7 +125,7 @@
     "Disponible": true,
     "Entrega": "ue",
     "Estado": "ok",
-    "Última actualización": "2026-10-04T18:54:25+00:00"
+    "Última actualización": "2026-10-04T18:56:42+00:00"
   },
   {
     "Articulo": "tygr",
@@ -141,7 +141,7 @@
     "Disponible": true,
     "Entrega": "ue",
     "Estado": "ok",
-    "Última actualización": "2026-10-04T18:54:25+00:00"
+    "Última actualización": "2026-10-04T18:56:42+00:00"
   },
   {
     "Articulo": "tygr",
