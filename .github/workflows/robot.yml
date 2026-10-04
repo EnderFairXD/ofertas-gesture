@@ -10,6 +10,11 @@ on:
     - cron: '0 */4 * 11,12 *'
     - cron: '0 */4 1-7 1 *'
   workflow_dispatch:
+    inputs:
+      probar_aviso:
+        description: 'Mandar un aviso de prueba, para comprobar que Telegram llega'
+        type: boolean
+        default: false
 
 permissions:
   contents: write
@@ -47,8 +52,11 @@ jobs:
           UMBRAL_GESTURE: '750'
           UMBRAL_TYGR: '140'
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          TELEGRAM_TOKEN: ${{ secrets.TELEGRAM_TOKEN }}        # opcional
-          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}    # opcional
+          TELEGRAM_TOKEN: ${{ secrets.TELEGRAM_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+          # Quita "incidencia" si solo quieres el aviso por Telegram.
+          AVISO_CANALES: 'telegram,incidencia'
+          AVISO_PRUEBA: ${{ inputs.probar_aviso && '1' || '' }}
         run: python scraper.py
 
       - name: Subir respuestas fallidas para inspección

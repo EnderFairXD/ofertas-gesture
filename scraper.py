@@ -57,6 +57,13 @@ DIAS_HISTORICO = 365
 
 # Con esto puesto a 1 se escribe el aviso en el log pero no se manda a nadie.
 AVISO_SIMULADO = os.getenv("AVISO_SIMULADO", "") == "1"
+# Con esto a 1 se manda un aviso de prueba, para comprobar que Telegram llega.
+AVISO_PRUEBA = os.getenv("AVISO_PRUEBA", "") == "1"
+# Por dónde avisar. Quita "incidencia" si no quieres que abra incidencias.
+AVISO_CANALES = [
+    c.strip() for c in os.getenv("AVISO_CANALES", "telegram,incidencia").split(",")
+    if c.strip()
+]
 
 # Rebajas: en estas ventanas los precios se mueven en horas, así que el aviso
 # por bajada relativa se vuelve más sensible y el mensaje lo dice.
@@ -1257,6 +1264,46 @@ def abrir_incidencia(cli: Cliente, titulo: str, cuerpo: str) -> bool:
     return True
 
 
+def mandar(cli: Cliente, titulo: str, cuerpo: str) -> list[str]:
+    """Saca el aviso por los canales configurados y devuelve los que han ido."""
+    canales = []
+    if "telegram" in AVISO_CANALES and enviar_telegram(cli, titulo, cuerpo):
+        canales.append("telegram")
+    if "incidencia" in AVISO_CANALES and abrir_incidencia(cli, titulo, cuerpo):
+        canales.append("incidencia")
+    return canales
+
+
+def probar_aviso(cli: Cliente, publicadas: list[dict]) -> None:
+    """Aviso de prueba a mano, para comprobar que el canal llega. Lleva los
+    precios de verdad, así que de paso se ve que el robot va fino."""
+    lineas = []
+    for prod in PRODUCTOS:
+        suyas = [
+            d for d in publicadas
+            if (d.get("Articulo") or "gesture") == prod["id"] and apto_para_aviso(d)
+        ]
+        if suyas:
+            m = min(suyas, key=lambda d: coste(d))
+            lineas.append(
+                f"{prod['corto']}: {euros(coste(m))} en {m['Tienda']} "
+                f"(te avisaría por debajo de {euros(prod['umbral'])})"
+            )
+        else:
+            lineas.append(f"{prod['corto']}: ahora mismo no hay nada comprable")
+
+    titulo = "Prueba de aviso"
+    cuerpo = ("Si estás leyendo esto, los avisos te llegan bien.\n\n"
+              + "\n\n".join(lineas)
+              + "\n\n_Mensaje de prueba lanzado a mano. No es una oferta._")
+    canales = mandar(cli, titulo, cuerpo)
+    if canales:
+        log(f"aviso de prueba enviado por: {', '.join(canales)}")
+    else:
+        log("AVISO DE PRUEBA: no hay ningún canal configurado que funcione. "
+            "Revisa TELEGRAM_TOKEN y TELEGRAM_CHAT_ID en los secrets del repo.")
+
+
 def apto_para_aviso(oferta: dict) -> bool:
     """Qué cuenta para el aviso: algo que puedas comprar y que te llegue.
 
@@ -1337,11 +1384,7 @@ def avisar(cli: Cliente, producto: dict, publicadas: list[dict],
                 log(f"     | {linea}")
         return
 
-    canales = []
-    if enviar_telegram(cli, titulo, cuerpo):
-        canales.append("telegram")
-    if abrir_incidencia(cli, titulo, cuerpo):
-        canales.append("incidencia")
+    canales = mandar(cli, titulo, cuerpo)
     if not canales:
         log("   hay motivo de aviso pero no hay ningún canal configurado")
         return
@@ -1449,6 +1492,9 @@ def main() -> int:
     )
     estado(resultados, len(final), conservados, temporada)
     log(f"datos.json escrito con {len(final)} oferta(s) ({frescas} frescas)")
+
+    if AVISO_PRUEBA:
+        probar_aviso(cli, final)
 
     # Que una tienda no tenga el producto es información, no avería. Un error
     # de red o de formato sí: el workflow debe ponerse en rojo y enterarte.
