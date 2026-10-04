@@ -45,7 +45,7 @@ jobs:
           SCRAPERAPI_KEY: ${{ secrets.SCRAPERAPI_KEY }}   # opcional
           # Umbral de aviso de cada producto, en euros puestos en casa.
           UMBRAL_GESTURE: '750'
-          UMBRAL_TYGR: '130'
+          UMBRAL_TYGR: '140'
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           TELEGRAM_TOKEN: ${{ secrets.TELEGRAM_TOKEN }}        # opcional
           TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}    # opcional
