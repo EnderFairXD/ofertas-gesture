@@ -1,5 +1,5 @@
 {
-  "ejecutado": "2026-10-04T15:01:50+00:00",
+  "ejecutado": "2026-10-04T15:03:43+00:00",
   "ofertas_publicadas": 10,
   "conservado_sin_cambios": false,
   "temporada": null,
@@ -100,7 +100,7 @@
       "id": "tygr",
       "nombre": "Beyerdynamic TYGR 300 R",
       "corto": "TYGR 300 R",
-      "umbral_aviso": 140.0,
+      "umbral_aviso": 130.0,
       "solo_ue": true,
       "conservado": false,
       "a_mano": [
@@ -128,11 +128,11 @@
         },
         {
           "nombre": "Amazon.es",
-          "ok": true,
+          "ok": false,
           "omitida": false,
-          "ofertas": 1,
+          "ofertas": 0,
           "tolerante": true,
-          "detalle": null
+          "detalle": "RuntimeError: Amazon ha devuelto su página de verificación"
         },
         {
           "nombre": "Beyerdynamic oficial (UE)",
