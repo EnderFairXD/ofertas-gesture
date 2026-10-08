@@ -13,7 +13,7 @@
     "Disponible": true,
     "Entrega": "importa",
     "Estado": "ok",
-    "Última actualización": "2026-10-07T12:28:56+00:00"
+    "Última actualización": "2026-10-08T12:38:23+00:00"
   },
   {
     "Articulo": "gesture",
@@ -29,15 +29,15 @@
     "Disponible": true,
     "Entrega": "es",
     "Estado": "ok",
-    "Última actualización": "2026-10-07T12:28:56+00:00"
+    "Última actualización": "2026-10-08T12:38:23+00:00"
   },
   {
     "Articulo": "gesture",
     "Tienda": "The Office Crowd (reacond. ES)",
     "Producto": "Steelcase Silla de oficina ergonómica Gesture - Tela gris - Reacondicionada",
-    "Precio": 788.95,
+    "Precio": 787.95,
     "Moneda": "EUR",
-    "PrecioEUR": 788.95,
+    "PrecioEUR": 787.95,
     "Envio": null,
     "EnvioEUR": null,
     "TotalEUR": null,
@@ -45,39 +45,7 @@
     "Disponible": false,
     "Entrega": "importa",
     "Estado": "sin stock",
-    "Última actualización": "2026-10-07T12:28:56+00:00"
-  },
-  {
-    "Articulo": "gesture",
-    "Tienda": "Chair Smith (reacond. UK)",
-    "Producto": "Refurbished Steelcase Gesture Task chair",
-    "Precio": 444.0,
-    "Moneda": "GBP",
-    "PrecioEUR": 523.08,
-    "Envio": null,
-    "EnvioEUR": null,
-    "TotalEUR": null,
-    "Enlace": "https://chairsmith.co.uk/product/steelcase-gesture-task-chair-2/",
-    "Disponible": true,
-    "Entrega": "no",
-    "Estado": "ok",
-    "Última actualización": "2026-10-07T12:28:56+00:00"
-  },
-  {
-    "Articulo": "gesture",
-    "Tienda": "Chair Smith (reacond. UK)",
-    "Producto": "Refurbished Steelcase Gesture Task chair",
-    "Precio": 480.0,
-    "Moneda": "GBP",
-    "PrecioEUR": 565.49,
-    "Envio": null,
-    "EnvioEUR": null,
-    "TotalEUR": null,
-    "Enlace": "https://chairsmith.co.uk/product/refurbished-steelcase-gesture-task-chair-2/",
-    "Disponible": true,
-    "Entrega": "no",
-    "Estado": "ok",
-    "Última actualización": "2026-10-07T12:28:56+00:00"
+    "Última actualización": "2026-10-08T12:38:23+00:00"
   },
   {
     "Articulo": "gesture",
@@ -85,7 +53,7 @@
     "Producto": "Steelcase Gesture Task chair",
     "Precio": 420.0,
     "Moneda": "GBP",
-    "PrecioEUR": 494.8,
+    "PrecioEUR": 496.19,
     "Envio": null,
     "EnvioEUR": null,
     "TotalEUR": null,
@@ -93,7 +61,39 @@
     "Disponible": false,
     "Entrega": "no",
     "Estado": "sin stock",
-    "Última actualización": "2026-10-07T12:28:56+00:00"
+    "Última actualización": "2026-10-08T12:38:23+00:00"
+  },
+  {
+    "Articulo": "gesture",
+    "Tienda": "Chair Smith (reacond. UK)",
+    "Producto": "Refurbished Steelcase Gesture Task chair",
+    "Precio": 444.0,
+    "Moneda": "GBP",
+    "PrecioEUR": 524.54,
+    "Envio": null,
+    "EnvioEUR": null,
+    "TotalEUR": null,
+    "Enlace": "https://chairsmith.co.uk/product/steelcase-gesture-task-chair-2/",
+    "Disponible": false,
+    "Entrega": "no",
+    "Estado": "sin stock",
+    "Última actualización": "2026-10-08T12:38:23+00:00"
+  },
+  {
+    "Articulo": "gesture",
+    "Tienda": "Chair Smith (reacond. UK)",
+    "Producto": "Steelcase Gesture Task chair – delivery within London M25",
+    "Precio": 475.0,
+    "Moneda": "GBP",
+    "PrecioEUR": 561.16,
+    "Envio": null,
+    "EnvioEUR": null,
+    "TotalEUR": null,
+    "Enlace": "https://chairsmith.co.uk/product/steelcase-gesture-task-chair-delivery-within-london-m25/",
+    "Disponible": false,
+    "Entrega": "no",
+    "Estado": "sin stock",
+    "Última actualización": "2026-10-08T12:38:23+00:00"
   },
   {
     "Articulo": "gesture",
@@ -101,7 +101,7 @@
     "Producto": "Steelcase Gesture Chair",
     "Precio": 534.0,
     "Moneda": "GBP",
-    "PrecioEUR": 629.11,
+    "PrecioEUR": 630.87,
     "Envio": null,
     "EnvioEUR": null,
     "TotalEUR": null,
@@ -109,7 +109,7 @@
     "Disponible": false,
     "Entrega": "no",
     "Estado": "sin stock",
-    "Última actualización": "2026-10-07T12:28:56+00:00"
+    "Última actualización": "2026-10-08T12:38:23+00:00"
   },
   {
     "Articulo": "tygr",
@@ -125,7 +125,7 @@
     "Disponible": true,
     "Entrega": "ue",
     "Estado": "ok",
-    "Última actualización": "2026-10-07T12:29:05+00:00"
+    "Última actualización": "2026-10-08T12:38:34+00:00"
   },
   {
     "Articulo": "tygr",
@@ -141,7 +141,7 @@
     "Disponible": true,
     "Entrega": "ue",
     "Estado": "ok",
-    "Última actualización": "2026-10-07T12:29:05+00:00"
+    "Última actualización": "2026-10-08T12:38:34+00:00"
   },
   {
     "Articulo": "tygr",
