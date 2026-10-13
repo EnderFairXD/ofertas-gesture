@@ -3,17 +3,17 @@
     "Articulo": "gesture",
     "Tienda": "Office Logix Shop (reacond. EE. UU.)",
     "Producto": "Steelcase Gesture Chair",
-    "Precio": 563.95,
+    "Precio": 562.95,
     "Moneda": "EUR",
-    "PrecioEUR": 563.95,
+    "PrecioEUR": 562.95,
     "Envio": 317.95,
     "EnvioEUR": 317.95,
-    "TotalEUR": 1067.1,
+    "TotalEUR": 1065.89,
     "Enlace": "https://www.officelogixshop.com/products/steelcase-gesture-platinum-frame-desk-chair",
     "Disponible": true,
     "Entrega": "importa",
     "Estado": "ok",
-    "Última actualización": "2026-10-12T14:09:01+00:00"
+    "Última actualización": "2026-10-13T13:20:56+00:00"
   },
   {
     "Articulo": "gesture",
@@ -29,15 +29,15 @@
     "Disponible": true,
     "Entrega": "es",
     "Estado": "ok",
-    "Última actualización": "2026-10-12T14:09:01+00:00"
+    "Última actualización": "2026-10-13T13:20:56+00:00"
   },
   {
     "Articulo": "gesture",
     "Tienda": "The Office Crowd (reacond. ES)",
     "Producto": "Steelcase Silla de oficina ergonómica Gesture - Tela gris - Reacondicionada",
-    "Precio": 790.95,
+    "Precio": 789.95,
     "Moneda": "EUR",
-    "PrecioEUR": 790.95,
+    "PrecioEUR": 789.95,
     "Envio": null,
     "EnvioEUR": null,
     "TotalEUR": null,
@@ -45,7 +45,7 @@
     "Disponible": false,
     "Entrega": "importa",
     "Estado": "sin stock",
-    "Última actualización": "2026-10-12T14:09:01+00:00"
+    "Última actualización": "2026-10-13T13:20:56+00:00"
   },
   {
     "Articulo": "gesture",
@@ -61,7 +61,7 @@
     "Disponible": true,
     "Entrega": "no",
     "Estado": "ok",
-    "Última actualización": "2026-10-12T14:09:01+00:00"
+    "Última actualización": "2026-10-13T13:20:56+00:00"
   },
   {
     "Articulo": "gesture",
@@ -77,7 +77,7 @@
     "Disponible": false,
     "Entrega": "no",
     "Estado": "sin stock",
-    "Última actualización": "2026-10-12T14:09:01+00:00"
+    "Última actualización": "2026-10-13T13:20:56+00:00"
   },
   {
     "Articulo": "gesture",
@@ -93,7 +93,7 @@
     "Disponible": false,
     "Entrega": "no",
     "Estado": "sin stock",
-    "Última actualización": "2026-10-12T14:09:01+00:00"
+    "Última actualización": "2026-10-13T13:20:56+00:00"
   },
   {
     "Articulo": "gesture",
@@ -109,7 +109,7 @@
     "Disponible": false,
     "Entrega": "no",
     "Estado": "sin stock",
-    "Última actualización": "2026-10-12T14:09:01+00:00"
+    "Última actualización": "2026-10-13T13:20:56+00:00"
   },
   {
     "Articulo": "tygr",
@@ -125,7 +125,7 @@
     "Disponible": true,
     "Entrega": "ue",
     "Estado": "ok",
-    "Última actualización": "2026-10-12T14:09:12+00:00"
+    "Última actualización": "2026-10-13T13:21:08+00:00"
   },
   {
     "Articulo": "tygr",
@@ -141,7 +141,7 @@
     "Disponible": true,
     "Entrega": "ue",
     "Estado": "ok",
-    "Última actualización": "2026-10-12T14:09:12+00:00"
+    "Última actualización": "2026-10-13T13:21:08+00:00"
   },
   {
     "Articulo": "tygr",
