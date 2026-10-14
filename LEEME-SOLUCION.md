@@ -116,7 +116,7 @@ de GitHub. No hay que compilar nada ni pasar por ninguna tienda de apps.
 - **Sin cobertura**: guarda los últimos precios y los enseña avisando de que
   son datos guardados.
 
-## Por qué GitHub Pages y no un artifact de Claude
+## Por qué GitHub Pages y no un artifact
 
 Las páginas publicadas como artifact tienen una política de seguridad que
 bloquea cualquier `fetch` a otro dominio, así que no podrían leer tu
