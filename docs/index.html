@@ -626,7 +626,7 @@ img { max-width: 100%; }
 (function () {
   "use strict";
 
-  var POR_DEFECTO = { usuario: "EnderFairXD", repo: "ofertas-gesture", rama: "main" };
+  var POR_DEFECTO = { usuario: "EnderFairXD", repo: "rastreador-de-precios", rama: "main" };
   var CLAVE_CONF = "gesture.config";
   var CLAVE_CACHE = "gesture.cache";
   var CLAVE_PRECIOS = "gesture.precios";
@@ -1008,14 +1008,9 @@ img { max-width: 100%; }
 
     // --- Vista de tabla, para no dejar nada solo en la gráfica ---
     var umbral = $("umbral");
-    if (prod && typeof prod.umbral_aviso === "number") {
-      umbral.textContent = "Te avisaré si baja de " +
-        sinDecimales.format(prod.umbral_aviso) + " puesto en casa, o si cae bastante " +
-        "por debajo de su precio habitual.";
-      umbral.hidden = false;
-    } else {
-      umbral.hidden = true;
-    }
+    umbral.textContent = "Te avisaré cuando baje a mi precio objetivo, o si cae bastante " +
+      "por debajo de su precio habitual.";
+    umbral.hidden = false;
 
     $("detalle-tabla").hidden = false;
     $("cuerpo-tabla").innerHTML = historico.slice().reverse().slice(0, 60).map(function (d) {

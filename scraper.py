@@ -834,6 +834,15 @@ def ebay_api(cli: Cliente, tienda: str, producto: dict, consulta: str | None = N
 # Cada producto trae sus tiendas, su filtro de títulos y su umbral de aviso.
 # Las fuentes declaran a dónde entregan, comprobado en su página de envíos:
 # eso es lo que decide si un precio te sirve de algo.
+def umbral_de(nombre):
+    """Umbral de aviso en euros, leído del entorno (secreto del repositorio).
+    Si no está definido, ese producto solo avisa por caída de precio."""
+    try:
+        return float(os.getenv(nombre, "").replace(",", "."))
+    except ValueError:
+        return None
+
+
 PRODUCTOS: list[dict] = [
     {
         "id": "gesture",
@@ -847,7 +856,7 @@ PRODUCTOS: list[dict] = [
             "cushion", "cilindro", "cylinder", "manual", "cabecero", "headrest",
             "stool", "taburete", "gas", "compatible", "replacement", "kit",
         ),
-        "umbral": float(os.getenv("UMBRAL_GESTURE", "750")),
+        "umbral": umbral_de("UMBRAL_GESTURE"),
         "solo_ue": False,
         "fuentes": [
             {
@@ -935,7 +944,7 @@ PRODUCTOS: list[dict] = [
             "b-stock", "bstock", "b stock", "refurbished", "reacondicionad",
             "segunda mano", "2ª mano", "usado", "used", "open box", "openbox",
         ),
-        "umbral": float(os.getenv("UMBRAL_TYGR", "140")),
+        "umbral": umbral_de("UMBRAL_TYGR"),
         "solo_ue": True,
         "fuentes": [
             {
@@ -1286,8 +1295,7 @@ def probar_aviso(cli: Cliente, publicadas: list[dict]) -> None:
         if suyas:
             m = min(suyas, key=lambda d: coste(d))
             lineas.append(
-                f"{prod['corto']}: {euros(coste(m))} en {m['Tienda']} "
-                f"(te avisaría por debajo de {euros(prod['umbral'])})"
+                f"{prod['corto']}: {euros(coste(m))} en {m['Tienda']}"
             )
         else:
             lineas.append(f"{prod['corto']}: ahora mismo no hay nada comprable")
@@ -1349,8 +1357,8 @@ def avisar(cli: Cliente, producto: dict, publicadas: list[dict],
     temporada = temporada_actual()
     motivos = []
 
-    if valor < producto["umbral"]:
-        motivos.append(f"por debajo de tu umbral de {euros(producto['umbral'])}")
+    if producto["umbral"] is not None and valor < producto["umbral"]:
+        motivos.append("por debajo de tu precio objetivo")
 
     habitual = precio_habitual(historial, ahora().strftime("%Y-%m-%d"))
     caida = CAIDA_TEMPORADA if temporada else CAIDA_NORMAL
@@ -1520,7 +1528,6 @@ def estado(resultados: list[Resultado], total: int,
                         "id": prod["id"],
                         "nombre": prod["nombre"],
                         "corto": prod["corto"],
-                        "umbral_aviso": prod["umbral"],
                         "solo_ue": prod["solo_ue"],
                         "conservado": prod["id"] in conservados,
                         "a_mano": [{"nombre": n, "url": u} for n, u in prod["a_mano"]],

@@ -48,9 +48,9 @@ jobs:
           EBAY_CLIENT_SECRET: ${{ secrets.EBAY_CLIENT_SECRET }}
           EBAY_MARKETPLACE: EBAY_ES
           SCRAPERAPI_KEY: ${{ secrets.SCRAPERAPI_KEY }}   # opcional
-          # Umbral de aviso de cada producto, en euros puestos en casa.
-          UMBRAL_GESTURE: '750'
-          UMBRAL_TYGR: '140'
+          # Precio objetivo de cada producto (secretos del repositorio, no públicos).
+          UMBRAL_GESTURE: ${{ secrets.UMBRAL_GESTURE }}
+          UMBRAL_TYGR: ${{ secrets.UMBRAL_TYGR }}
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           TELEGRAM_TOKEN: ${{ secrets.TELEGRAM_TOKEN }}
           TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}

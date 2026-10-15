@@ -46,7 +46,7 @@ escribirles pidiendo acceso o un feed de precios.
 
 ## 3. Pasos
 
-1. **Copia los archivos** al repo `ofertas-gesture`:
+1. **Copia los archivos** al repo `rastreador-de-precios`:
    `scraper.py`, `app.py`, `requirements.txt`, `requirements-scraper.txt`,
    `.github/workflows/robot.yml`. Añade `debug/` al `.gitignore`.
 
@@ -125,7 +125,7 @@ responde con `access-control-allow-origin: *` (comprobado).
 
 ## Pasos
 
-1. Copia la carpeta **`docs/`** entera a la raíz del repo `ofertas-gesture`,
+1. Copia la carpeta **`docs/`** entera a la raíz del repo `rastreador-de-precios`,
    incluido el archivo oculto `.nojekyll` (evita que GitHub procese la carpeta
    con Jekyll).
 
@@ -134,7 +134,7 @@ responde con `access-control-allow-origin: *` (comprobado).
    - Branch: **main**, carpeta **/docs** → *Save*
 
 3. Al minuto estará en
-   **https://enderfairxd.github.io/ofertas-gesture/**
+   **https://enderfairxd.github.io/rastreador-de-precios/**
 
 4. **Instalarla en el móvil**
    - Android (Chrome): abre la URL → menú ⋮ → *Añadir a pantalla de inicio* /
@@ -228,7 +228,7 @@ El robot pasa cada mañana, pero la app trae un botón **Buscar ahora**:
 
 Para lo segundo, en *Ajustes* hay un campo de token. Créalo en GitHub como
 **fine-grained personal access token** con el alcance más estrecho posible:
-solo el repositorio `ofertas-gesture` y solo el permiso **Actions: read and
+solo el repositorio `rastreador-de-precios` y solo el permiso **Actions: read and
 write**. Ponle caducidad. Se guarda únicamente en el `localStorage` de tu
 navegador y solo se manda a `api.github.com`; si usas la app desde un
 dispositivo que no es tuyo, no lo guardes.
@@ -351,7 +351,7 @@ de 30 días y cuánto estás por encima del mínimo ahora— y la curva.
 
 ---
 
-# Aviso cuando baje de 750 €
+# Aviso cuando baje del precio objetivo
 
 El robot compara el umbral contra **lo más barato que puedes comprar de
 verdad**: en stock, con entrega en España y al precio puesto en casa (envío e
@@ -387,10 +387,11 @@ Guarda en `avisos.json` el último precio avisado, con estas reglas:
 Comprobado con esa secuencia exacta: tres avisos en los tres momentos
 correctos, cada uno por los dos canales.
 
-## Cambiar el umbral
+## Cambiar el precio objetivo
 
-Está en `.github/workflows/robot.yml`, variable `UMBRAL_AVISO`. La app enseña
-el valor configurado debajo de la gráfica, leyéndolo de `estado.json`.
+Está en los secretos del repositorio (`UMBRAL_GESTURE` y `UMBRAL_TYGR`), para que
+no sea público. El código no lleva ningún valor por defecto: sin secreto, ese
+producto solo avisa por caída de precio.
 
 ## Qué cuenta para el aviso
 
@@ -410,12 +411,11 @@ cuesta 1.062 € puesta en casa: sin la tarifa real de envío, avisar de esos
 560 € sería mentir. Si la tienda es española y no da tarifa, sí se avisa con
 el precio a secas, pero el mensaje lo dice.
 
-## Por qué 750 €
+## Por qué un precio objetivo
 
-Las Gesture de particular que aparecen en Wallapop rondan los 710-800 €, así
-que 750 € puestos en casa es el filo de lo que es una buena compra aquí. Con
-500 € el aviso no habría saltado nunca.
-
+Se fijó mirando lo que piden los particulares en Wallapop, para que sea realista:
+con un objetivo demasiado bajo el aviso no habría saltado nunca. El valor concreto
+es privado.
 
 ---
 
@@ -424,10 +424,10 @@ que 750 € puestos en casa es el filo de lo que es una buena compra aquí. Con
 El robot ya no sigue un solo artículo. En `scraper.py` hay una lista
 `PRODUCTOS`, y cada uno trae sus tiendas, su filtro de títulos y su umbral:
 
-| Producto | Umbral | Tiendas |
+| Producto | Precio objetivo | Tiendas |
 |---|---|---|
-| Steelcase Gesture | 750 € | 8 (España, UK, EE. UU., eBay) |
-| Beyerdynamic TYGR 300 R | 140 € | 3, **solo UE y solo nuevos** |
+| Steelcase Gesture | privado | 8 (España, UK, EE. UU., eBay) |
+| Beyerdynamic TYGR 300 R | privado | 3, **solo UE y solo nuevos** |
 
 Los TYGR llevan `"solo_ue": True`: si alguna fuente devolviera una oferta de
 fuera de la Unión Europea, se descarta antes de publicarla. Nada de aduanas.
@@ -440,7 +440,7 @@ Fuentes de los auriculares, todas comprobadas:
 - **Beyerdynamic B-Stock (UE)** — **109 €**, reacondicionados de la propia marca.
 
 En la app aparece un selector arriba para cambiar de producto; cada uno tiene
-su precio destacado, su lista, su curva, su umbral y sus enlaces manuales.
+su precio destacado, su lista, su curva y sus enlaces manuales.
 
 **Pendiente**: ninguna de las tres tiendas de auriculares publica una tarifa de
 envío consultable, así que ahí la app dice «envío sin calcular». Beyerdynamic
